@@ -1,0 +1,27 @@
+Metadata-Version: 2.4
+Name: oatie-backend
+Version: 0.1.0
+Summary: Oatie AI Backend - Oracle BI Publisher Assistant
+Author-email: Oatie Team <dev@oatie.local>
+Requires-Python: >=3.10
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Requires-Dist: pydantic
+Requires-Dist: SQLAlchemy>=2.0
+Requires-Dist: oracledb
+Requires-Dist: python-dotenv
+Requires-Dist: httpx
+Requires-Dist: tenacity
+Requires-Dist: cachetools
+Requires-Dist: langchain
+Requires-Dist: langchain-community
+Requires-Dist: openai
+Requires-Dist: asyncpg
+Requires-Dist: alembic
+Requires-Dist: python-multipart
+Provides-Extra: development
+Requires-Dist: pytest; extra == "development"
+Requires-Dist: pytest-asyncio; extra == "development"
+Requires-Dist: ruff; extra == "development"
+Requires-Dist: mypy; extra == "development"
+Requires-Dist: black; extra == "development"

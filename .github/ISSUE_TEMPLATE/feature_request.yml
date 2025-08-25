@@ -1,0 +1,126 @@
+name: Feature Request
+description: Suggest an idea for Oatie
+title: '[FEATURE] Brief description of the feature'
+labels: ['enhancement', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ✨ Feature Request
+        
+        Thank you for suggesting a new feature for Oatie! Please provide as much detail as possible.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like
+      placeholder: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Describe alternatives you've considered
+      placeholder: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component would this feature affect?
+      options:
+        - Frontend (React/TypeScript)
+        - Backend (FastAPI/Python)
+        - Database Schema
+        - AI/LLM Integration
+        - Oracle BI Publisher Integration
+        - Authentication/Security
+        - DevOps/Infrastructure
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would improve workflow
+        - High - Critical for adoption
+        - Urgent - Blocking current work
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Feature Scope
+      description: What type of feature is this?
+      options:
+        - label: UI/UX Enhancement
+        - label: New API Endpoint
+        - label: Performance Improvement
+        - label: Security Enhancement
+        - label: Integration with External Service
+        - label: Developer Experience
+        - label: Administrative Feature
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What would make this feature complete?
+      placeholder: |
+        - [ ] User can...
+        - [ ] System should...
+        - [ ] Feature includes...
+    validations:
+      required: false
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Examples
+      description: If applicable, add mockups, examples, or links to similar implementations
+      placeholder: Paste screenshots, links, or describe visual examples
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: implementation
+    attributes:
+      label: Implementation Considerations
+      description: Any special considerations for implementation?
+      options:
+        - label: Requires database schema changes
+        - label: Requires third-party API integration
+        - label: May impact performance
+        - label: Requires security review
+        - label: Breaking change (affects existing functionality)
+        - label: Requires documentation updates
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the feature request here
+      placeholder: Any additional information that might be helpful for understanding this request
+    validations:
+      required: false

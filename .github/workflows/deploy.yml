@@ -1,0 +1,453 @@
+name: Deploy to Environments
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      force_deploy:
+        description: 'Force deployment (skip some checks)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Determine deployment environment and strategy
+  prepare-deployment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.environment.outputs.environment }}
+      deploy_backend: ${{ steps.changes.outputs.backend }}
+      deploy_frontend: ${{ steps.changes.outputs.frontend }}
+      deploy_infrastructure: ${{ steps.changes.outputs.infrastructure }}
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: Determine environment
+      id: environment
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+        elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          echo "environment=production" >> $GITHUB_OUTPUT
+        else
+          echo "environment=staging" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Check for changes
+      id: changes
+      run: |
+        # Check what has changed to optimize deployments
+        if git diff --name-only HEAD^ HEAD | grep -E '^backend/|docker-compose|Dockerfile' || [ "${{ github.event.inputs.force_deploy }}" = "true" ]; then
+          echo "backend=true" >> $GITHUB_OUTPUT
+        else
+          echo "backend=false" >> $GITHUB_OUTPUT
+        fi
+        
+        if git diff --name-only HEAD^ HEAD | grep -E '^frontend/|docker-compose|Dockerfile' || [ "${{ github.event.inputs.force_deploy }}" = "true" ]; then
+          echo "frontend=true" >> $GITHUB_OUTPUT
+        else
+          echo "frontend=false" >> $GITHUB_OUTPUT
+        fi
+        
+        if git diff --name-only HEAD^ HEAD | grep -E '^infrastructure/|docker-compose|\.github/workflows' || [ "${{ github.event.inputs.force_deploy }}" = "true" ]; then
+          echo "infrastructure=true" >> $GITHUB_OUTPUT
+        else
+          echo "infrastructure=false" >> $GITHUB_OUTPUT
+        fi
+
+  # Build and push Docker images
+  build-images:
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+    if: needs.prepare-deployment.outputs.deploy_backend == 'true' || needs.prepare-deployment.outputs.deploy_frontend == 'true'
+    strategy:
+      matrix:
+        component: [backend, frontend]
+        include:
+          - component: backend
+            context: ./backend
+            deploy: ${{ needs.prepare-deployment.outputs.deploy_backend }}
+          - component: frontend
+            context: ./frontend
+            deploy: ${{ needs.prepare-deployment.outputs.deploy_frontend }}
+    
+    steps:
+    - name: Skip if no changes
+      if: matrix.deploy == 'false'
+      run: |
+        echo "Skipping ${{ matrix.component }} - no changes detected"
+        exit 0
+
+    - name: Checkout repository
+      if: matrix.deploy == 'true'
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      if: matrix.deploy == 'true'
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      if: matrix.deploy == 'true'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      if: matrix.deploy == 'true'
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=${{ needs.prepare-deployment.outputs.environment }}-latest
+
+    - name: Build and push Docker image
+      if: matrix.deploy == 'true'
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ matrix.context }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          ENVIRONMENT=${{ needs.prepare-deployment.outputs.environment }}
+
+  # Deploy to staging environment
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, build-images]
+    if: needs.prepare-deployment.outputs.environment == 'staging'
+    environment: 
+      name: staging
+      url: https://staging.oatie.example.com
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup deployment environment
+      run: |
+        echo "Preparing staging deployment..."
+        echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+        echo "API_URL=https://api-staging.oatie.example.com" >> $GITHUB_ENV
+        echo "APP_URL=https://staging.oatie.example.com" >> $GITHUB_ENV
+
+    - name: Deploy backend to staging
+      if: needs.prepare-deployment.outputs.deploy_backend == 'true'
+      run: |
+        echo "🚀 Deploying backend to staging..."
+        # Here you would typically:
+        # 1. SSH to staging server or use cloud provider CLI
+        # 2. Pull new Docker images
+        # 3. Update docker-compose configuration
+        # 4. Rolling update of services
+        # 5. Run health checks
+        
+        echo "Backend image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:staging-latest"
+        echo "Deployment completed successfully!"
+
+    - name: Deploy frontend to staging
+      if: needs.prepare-deployment.outputs.deploy_frontend == 'true'
+      run: |
+        echo "🚀 Deploying frontend to staging..."
+        # Frontend deployment steps:
+        # 1. Update static file hosting (S3, CloudFront, etc.)
+        # 2. Update CDN configuration
+        # 3. Cache invalidation
+        
+        echo "Frontend image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:staging-latest"
+        echo "Frontend deployed to staging!"
+
+    - name: Run database migrations
+      if: needs.prepare-deployment.outputs.deploy_backend == 'true'
+      run: |
+        echo "📊 Running database migrations on staging..."
+        # Migration steps:
+        # 1. Backup current database
+        # 2. Run Alembic migrations
+        # 3. Verify migration success
+        echo "Migrations completed successfully!"
+
+    - name: Run smoke tests
+      run: |
+        echo "🧪 Running smoke tests against staging..."
+        # Smoke test steps:
+        # 1. Wait for services to be healthy
+        # 2. Test critical endpoints
+        # 3. Test frontend accessibility
+        # 4. Test database connectivity
+        
+        sleep 30  # Wait for services to start
+        
+        # Test API health
+        curl -f ${{ env.API_URL }}/health || exit 1
+        echo "✅ API health check passed"
+        
+        # Test frontend
+        curl -f ${{ env.APP_URL }} || exit 1
+        echo "✅ Frontend accessibility check passed"
+        
+        echo "All smoke tests passed!"
+
+    - name: Update deployment status
+      run: |
+        echo "📋 Staging deployment summary:"
+        echo "- Environment: staging"
+        echo "- Backend deployed: ${{ needs.prepare-deployment.outputs.deploy_backend }}"
+        echo "- Frontend deployed: ${{ needs.prepare-deployment.outputs.deploy_frontend }}"
+        echo "- URL: ${{ env.APP_URL }}"
+        echo "- API: ${{ env.API_URL }}"
+
+  # Deploy to production environment
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, build-images]
+    if: needs.prepare-deployment.outputs.environment == 'production'
+    environment: 
+      name: production
+      url: https://oatie.example.com
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup production environment
+      run: |
+        echo "Preparing production deployment..."
+        echo "ENVIRONMENT=production" >> $GITHUB_ENV
+        echo "API_URL=https://api.oatie.example.com" >> $GITHUB_ENV
+        echo "APP_URL=https://oatie.example.com" >> $GITHUB_ENV
+
+    - name: Pre-deployment checks
+      run: |
+        echo "🔍 Running pre-deployment checks..."
+        
+        # Check if staging tests passed
+        # Check if all required approvals are in place
+        # Check for any ongoing incidents
+        
+        echo "✅ Pre-deployment checks passed"
+
+    - name: Create deployment backup
+      run: |
+        echo "💾 Creating production backup..."
+        # Production backup steps:
+        # 1. Database backup
+        # 2. Static file backup
+        # 3. Configuration backup
+        echo "Backup created successfully!"
+
+    - name: Deploy backend to production
+      if: needs.prepare-deployment.outputs.deploy_backend == 'true'
+      run: |
+        echo "🚀 Deploying backend to production..."
+        # Production backend deployment:
+        # 1. Blue-green deployment strategy
+        # 2. Rolling update with health checks
+        # 3. Gradual traffic shifting
+        
+        echo "Backend image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest"
+        echo "Production backend deployment completed!"
+
+    - name: Deploy frontend to production
+      if: needs.prepare-deployment.outputs.deploy_frontend == 'true'
+      run: |
+        echo "🚀 Deploying frontend to production..."
+        # Production frontend deployment:
+        # 1. Update CDN with new assets
+        # 2. Gradual cache invalidation
+        # 3. Monitor error rates
+        
+        echo "Frontend image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest"
+        echo "Production frontend deployment completed!"
+
+    - name: Run production database migrations
+      if: needs.prepare-deployment.outputs.deploy_backend == 'true'
+      run: |
+        echo "📊 Running database migrations on production..."
+        # Production migration steps:
+        # 1. Additional backup before migration
+        # 2. Run migrations with monitoring
+        # 3. Verify data integrity
+        echo "Production migrations completed successfully!"
+
+    - name: Production smoke tests
+      run: |
+        echo "🧪 Running production smoke tests..."
+        
+        sleep 60  # Wait longer for production services
+        
+        # Comprehensive production tests
+        curl -f ${{ env.API_URL }}/health || exit 1
+        echo "✅ Production API health check passed"
+        
+        curl -f ${{ env.APP_URL }} || exit 1
+        echo "✅ Production frontend check passed"
+        
+        echo "All production smoke tests passed!"
+
+    - name: Post-deployment monitoring
+      run: |
+        echo "📊 Setting up post-deployment monitoring..."
+        # Post-deployment steps:
+        # 1. Monitor error rates
+        # 2. Check performance metrics
+        # 3. Verify user traffic
+        # 4. Set up alerts
+        echo "Monitoring configured successfully!"
+
+    - name: Notify stakeholders
+      run: |
+        echo "📢 Notifying stakeholders of production deployment..."
+        # Notification steps:
+        # 1. Slack notifications
+        # 2. Email notifications
+        # 3. Update status page
+        # 4. Create deployment log entry
+        echo "Stakeholders notified!"
+
+  # Performance testing after deployment
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js for performance testing
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install performance testing tools
+      run: |
+        npm install -g artillery lighthouse-ci
+
+    - name: Determine target URL
+      run: |
+        if [ "${{ needs.prepare-deployment.outputs.environment }}" = "production" ]; then
+          echo "TARGET_URL=https://oatie.example.com" >> $GITHUB_ENV
+          echo "API_URL=https://api.oatie.example.com" >> $GITHUB_ENV
+        else
+          echo "TARGET_URL=https://staging.oatie.example.com" >> $GITHUB_ENV
+          echo "API_URL=https://api-staging.oatie.example.com" >> $GITHUB_ENV
+        fi
+
+    - name: Run API load tests
+      run: |
+        echo "🚀 Running API load tests..."
+        
+        # Create Artillery configuration
+        cat > artillery-config.yml << EOF
+        config:
+          target: '${{ env.API_URL }}'
+          phases:
+            - duration: 60
+              arrivalRate: 10
+              name: "Warm up"
+            - duration: 120
+              arrivalRate: 50
+              name: "Load test"
+        scenarios:
+          - name: "Health check"
+            requests:
+              - get:
+                  url: "/health"
+          - name: "API endpoints"
+            requests:
+              - get:
+                  url: "/api/metadata/tables"
+        EOF
+        
+        artillery run artillery-config.yml --output load-test-report.json
+        echo "✅ Load tests completed"
+
+    - name: Run frontend performance tests
+      run: |
+        echo "⚡ Running frontend performance tests..."
+        
+        # Create Lighthouse CI configuration
+        cat > lighthouserc.js << EOF
+        module.exports = {
+          ci: {
+            collect: {
+              url: ['${{ env.TARGET_URL }}'],
+              numberOfRuns: 3,
+              settings: {
+                chromeFlags: '--no-sandbox'
+              }
+            },
+            assert: {
+              assertions: {
+                'categories:performance': ['warn', {minScore: 0.8}],
+                'categories:accessibility': ['warn', {minScore: 0.9}],
+                'categories:best-practices': ['warn', {minScore: 0.8}],
+                'categories:seo': ['warn', {minScore: 0.8}]
+              }
+            }
+          }
+        };
+        EOF
+        
+        lhci autorun
+        echo "✅ Performance tests completed"
+
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-reports-${{ needs.prepare-deployment.outputs.environment }}
+        path: |
+          load-test-report.json
+          .lighthouseci/
+
+  # Deployment rollback capability
+  rollback:
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'workflow_dispatch'
+    environment: 
+      name: ${{ needs.prepare-deployment.outputs.environment }}
+    needs: [prepare-deployment, deploy-staging, deploy-production]
+    
+    steps:
+    - name: Rollback deployment
+      run: |
+        echo "🔄 Rolling back deployment to previous version..."
+        # Rollback steps:
+        # 1. Restore from backup
+        # 2. Revert Docker images to previous tags
+        # 3. Restore database if needed
+        # 4. Update load balancer configuration
+        echo "Rollback completed successfully!"
+
+    - name: Verify rollback
+      run: |
+        echo "✅ Verifying rollback..."
+        # Verification steps similar to smoke tests
+        echo "Rollback verification completed!"

@@ -1,0 +1,71 @@
+# CODEOWNERS file for Oatie - Transform Your Fusion Reporting with AI
+# 
+# This file defines who owns what parts of the codebase and will automatically
+# request reviews from the appropriate owners when PRs are opened.
+# 
+# GitHub Pro Feature: Code owners for protected branches
+
+# Global ownership - fallback for anything not explicitly owned
+* @username
+
+# Backend Code
+/backend/ @username
+/backend/app/ @username
+/backend/app/api/ @username
+/backend/app/core/ @username
+/backend/app/models/ @username
+/backend/app/services/ @username
+
+# Frontend Code  
+/frontend/ @username
+/frontend/src/ @username
+/frontend/src/components/ @username
+/frontend/src/contexts/ @username
+/frontend/src/types/ @username
+
+# Infrastructure and DevOps
+/docker-compose.yml @username
+/backend/Dockerfile @username
+/frontend/Dockerfile @username
+/.github/ @username
+/.github/workflows/ @username
+
+# Database and Migrations
+/backend/alembic/ @username
+/backend/alembic.ini @username
+/backend/alembic/versions/ @username
+
+# Configuration Files
+/backend/pyproject.toml @username
+/frontend/package.json @username
+/frontend/tsconfig.json @username
+/frontend/vite.config.ts @username
+
+# Testing
+/backend/tests/ @username
+/backend/*test*.py @username
+/frontend/src/**/*.test.ts @username
+/frontend/src/**/*.test.tsx @username
+
+# Documentation
+/README.md @username
+/backend/README.md @username
+/CONTRIBUTING.md @username
+/.github/ISSUE_TEMPLATE/ @username
+/.github/pull_request_template.md @username
+
+# Security and Dependencies
+/.github/dependabot.yml @username
+/backend/requirements*.txt @username
+
+# Special files that require extra scrutiny
+.github/workflows/ci.yml @username
+.github/workflows/release.yml @username
+docker-compose.yml @username
+
+# Database schema changes require database team review
+/backend/alembic/versions/*.py @username
+
+# Security-sensitive files
+/backend/app/core/config.py @username
+/frontend/src/contexts/AuthContext.tsx @username

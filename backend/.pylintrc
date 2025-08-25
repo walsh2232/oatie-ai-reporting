@@ -1,0 +1,55 @@
+[MAIN]
+load-plugins=pylint.extensions.docparams,
+             pylint.extensions.docstyle,
+             pylint.extensions.mccabe
+
+[MESSAGES CONTROL]
+disable=missing-module-docstring,
+        missing-class-docstring,
+        missing-function-docstring,
+        too-few-public-methods,
+        too-many-arguments,
+        too-many-locals,
+        too-many-instance-attributes,
+        import-error,
+        no-name-in-module,
+        R0903,  # too-few-public-methods
+        R0913,  # too-many-arguments
+        R0914,  # too-many-locals
+        C0103,  # invalid-name (for variables like 'db')
+        W0613,  # unused-argument (common in FastAPI dependencies)
+
+[FORMAT]
+max-line-length=88
+indent-string='    '
+expected-line-ending-format=LF
+
+[BASIC]
+good-names=i,j,k,ex,Run,_,db,id,pk
+
+[DESIGN]
+max-complexity=10
+max-args=8
+max-locals=20
+max-returns=8
+max-branches=15
+max-statements=60
+max-parents=7
+max-attributes=10
+min-public-methods=1
+max-public-methods=30
+
+[SIMILARITIES]
+min-similarity-lines=4
+ignore-comments=yes
+ignore-docstrings=yes
+ignore-imports=no
+
+[TYPECHECK]
+ignored-modules=pydantic,sqlalchemy,fastapi,alembic
+
+[IMPORTS]
+known-third-party=fastapi,pydantic,sqlalchemy,alembic,uvicorn,prometheus_client,openai
+
+[EXCEPTIONS]
+overgeneral-exceptions=Exception
