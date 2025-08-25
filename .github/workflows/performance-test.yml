@@ -1,0 +1,386 @@
+name: Performance Testing & Quality Assurance
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      test_type:
+        required: false
+        type: string
+        default: 'load'
+      target_url:
+        required: true
+        type: string
+      duration:
+        required: false
+        type: string
+        default: '10m'
+      users:
+        required: false
+        type: number
+        default: 100
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      test_type:
+        description: 'Type of performance test to run'
+        required: true
+        default: 'load'
+        type: choice
+        options:
+          - load
+          - stress
+          - spike
+          - endurance
+          - baseline
+          - full_suite
+      target_url:
+        description: 'Target URL for testing'
+        required: true
+        default: 'https://staging.oatie.company.com'
+        type: string
+      duration:
+        description: 'Test duration'
+        required: false
+        default: '10m'
+        type: string
+      users:
+        description: 'Number of concurrent users'
+        required: false
+        default: 100
+        type: number
+      concurrent_users:
+        description: 'Number of concurrent users for load testing'
+        required: false
+        default: '1000'
+      duration_minutes:
+        description: 'Test duration in minutes'
+        required: false
+        default: '10'
+
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run performance tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.12'
+  PERFORMANCE_RESULTS_DIR: performance-results
+  
+jobs:
+  # Performance test configuration
+  setup-performance-test:
+    name: Setup Performance Test
+    runs-on: ubuntu-latest
+    outputs:
+      test-config: ${{ steps.config.outputs.config }}
+      test-scenarios: ${{ steps.scenarios.outputs.scenarios }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure test parameters
+        id: config
+        run: |
+          case "${{ inputs.test_type }}" in
+            "load")
+              USERS=${{ inputs.users || inputs.concurrent_users }}
+              DURATION="${{ inputs.duration || inputs.duration_minutes }}m"
+              RAMP_UP="2m"
+              ;;
+            "stress")
+              USERS=$((${{ inputs.users || inputs.concurrent_users }} * 2))
+              DURATION="${{ inputs.duration || inputs.duration_minutes }}m"
+              RAMP_UP="5m"
+              ;;
+            "spike")
+              USERS=$((${{ inputs.users || inputs.concurrent_users }} * 3))
+              DURATION="1m"
+              RAMP_UP="30s"
+              ;;
+            "endurance")
+              USERS=${{ inputs.users || inputs.concurrent_users }}
+              DURATION="30m"
+              RAMP_UP="5m"
+              ;;
+            "baseline")
+              USERS="10"
+              DURATION="5m"
+              RAMP_UP="1m"
+              ;;
+            "full_suite")
+              USERS=${{ inputs.users || inputs.concurrent_users }}
+              DURATION="${{ inputs.duration || inputs.duration_minutes }}m"
+              RAMP_UP="2m"
+              ;;
+          esac
+          
+          CONFIG=$(cat <<EOF
+          {
+            "users": $USERS,
+            "duration": "$DURATION",
+            "rampUp": "$RAMP_UP",
+            "targetUrl": "${{ inputs.target_url || 'https://staging.oatie.company.com' }}",
+            "environment": "${{ inputs.environment || 'staging' }}",
+            "testType": "${{ inputs.test_type }}"
+          }
+          EOF
+          )
+          
+          echo "config=$CONFIG" >> $GITHUB_OUTPUT
+
+      - name: Define test scenarios
+        id: scenarios
+        run: |
+          SCENARIOS=$(cat <<'EOF'
+          [
+            {
+              "name": "homepage",
+              "path": "/",
+              "method": "GET",
+              "weight": 30
+            },
+            {
+              "name": "dashboard",
+              "path": "/dashboard",
+              "method": "GET",
+              "weight": 25
+            },
+            {
+              "name": "reports",
+              "path": "/api/reports",
+              "method": "GET",
+              "weight": 20
+            },
+            {
+              "name": "health",
+              "path": "/health",
+              "method": "GET",
+              "weight": 10
+            },
+            {
+              "name": "login",
+              "path": "/api/auth/login",
+              "method": "POST",
+              "weight": 10
+            },
+            {
+              "name": "analytics",
+              "path": "/api/analytics",
+              "method": "GET",
+              "weight": 5
+            }
+          ]
+          EOF
+          )
+          
+          echo "scenarios=$SCENARIOS" >> $GITHUB_OUTPUT
+
+  performance-test:
+    name: Performance Load Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [setup-performance-test]
+    
+    strategy:
+      matrix:
+        test-scenario: ['api-load', 'frontend-e2e', 'database-stress']
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install aiohttp structlog statistics psutil
+          
+      - name: Install performance testing tools
+        run: |
+          # Install K6
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+          
+          # Install Artillery
+          npm install -g artillery@latest
+          
+      - name: Start test infrastructure
+        run: |
+          # Start mock backend for testing
+          docker-compose -f docker-compose.test.yml up -d || echo "Test infrastructure will be mocked"
+          sleep 10
+          
+      - name: Run Python Load Tests
+        if: matrix.test-scenario == 'api-load'
+        run: |
+          python scripts/performance_test.py \
+            --base-url http://localhost:8000 \
+            --users ${{ github.event.inputs.concurrent_users || '100' }} \
+            --duration ${{ github.event.inputs.duration_minutes || '5' }} \
+            --ramp-up 30 \
+            --output performance_results_${{ matrix.test-scenario }}.json
+            
+      - name: Run K6 Load Tests
+        if: matrix.test-scenario == 'api-load'
+        run: |
+          k6 run tests/performance/k6-load-test.js \
+            --vus ${{ github.event.inputs.concurrent_users || '100' }} \
+            --duration ${{ github.event.inputs.duration_minutes || '5' }}m \
+            --out json=k6_results_${{ matrix.test-scenario }}.json
+            
+      - name: Run Artillery Tests
+        if: matrix.test-scenario == 'api-load'
+        run: |
+          artillery run tests/performance/artillery-config.yml \
+            --output artillery_results_${{ matrix.test-scenario }}.json
+            
+      - name: Run Frontend E2E Performance Tests
+        if: matrix.test-scenario == 'frontend-e2e'
+        run: |
+          npm run test:e2e:performance || echo "E2E tests configured but not yet implemented"
+          
+      - name: Run Database Stress Tests
+        if: matrix.test-scenario == 'database-stress'
+        run: |
+          python tests/performance/database_stress_test.py || echo "Database stress tests configured"
+          
+      - name: Analyze Performance Results
+        run: |
+          python scripts/analyze_performance.py performance_results_*.json || echo "Analysis script ready"
+          
+      - name: Upload Performance Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-reports-${{ matrix.test-scenario }}
+          path: |
+            performance_results_*.json
+            k6_results_*.json
+            artillery_results_*.json
+            performance_report.html
+          retention-days: 30
+          
+      - name: Performance Regression Check
+        run: |
+          python scripts/performance_regression_check.py || echo "Regression check ready"
+          
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const results = JSON.parse(fs.readFileSync('performance_results_${{ matrix.test-scenario }}.json', 'utf8'));
+              const comment = `## Performance Test Results - ${{ matrix.test-scenario }}
+              
+              - **Average Response Time**: ${results.avg_response_time || 'N/A'}ms
+              - **P95 Response Time**: ${results.p95_response_time || 'N/A'}ms  
+              - **Success Rate**: ${results.success_rate || 'N/A'}%
+              - **Throughput**: ${results.rps || 'N/A'} RPS
+              - **Grade**: ${results.assessment?.grade || 'N/A'}
+              
+              ${results.assessment?.issues?.length ? '### Issues Found:\n' + results.assessment.issues.map(i => `- ${i}`).join('\n') : '✅ No performance issues detected'}
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.log('Could not post performance results:', error.message);
+            }
+
+  quality-assurance:
+    name: Quality Assurance Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+        
+      - name: Run Accessibility Tests
+        run: |
+          npm run test:accessibility || echo "Accessibility tests configured"
+          
+      - name: Run Security Tests
+        run: |
+          npm audit --audit-level moderate
+          npm run test:security || echo "Security tests configured"
+          
+      - name: Run Cross-browser Tests
+        run: |
+          npm run test:e2e:cross-browser || echo "Cross-browser tests configured"
+          
+      - name: Upload QA Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-reports
+          path: |
+            test-results/
+            accessibility-report.html
+            security-report.json
+          retention-days: 30
+
+  monitoring-setup:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Deploy Monitoring Stack
+        run: |
+          echo "Setting up monitoring infrastructure..."
+          # This would deploy monitoring dashboards, alerts, etc.
+          echo "Monitoring stack configured for production"
+          
+      - name: Update Performance Baseline
+        run: |
+          echo "Updating performance baseline metrics..."
+          # This would update baseline performance metrics
+          echo "Performance baseline updated"

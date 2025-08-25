@@ -17,6 +17,10 @@ from passlib.context import CryptContext
 from cryptography.fernet import Fernet
 import structlog
 
+from .mfa import MFAManager, MFAMethod, MFAStatus
+from .rbac import RBACManager, Permission
+from .abac import ABACManager, PolicyEffect
+
 logger = structlog.get_logger(__name__)
 
 
@@ -36,6 +40,11 @@ class AuditEventType(str, Enum):
     PERMISSION_REVOKED = "PERMISSION_REVOKED"
     SECURITY_VIOLATION = "SECURITY_VIOLATION"
     SYSTEM_ACCESS = "SYSTEM_ACCESS"
+    # New SQL-related audit events
+    SQL_GENERATION = "SQL_GENERATION"
+    SQL_OPTIMIZATION = "SQL_OPTIMIZATION"
+    SQL_VALIDATION = "SQL_VALIDATION"
+    SQL_EXPLAIN = "SQL_EXPLAIN"
 
 
 class SecurityManager:
@@ -51,6 +60,357 @@ class SecurityManager:
         
         # Audit log storage (in production, use dedicated audit database)
         self.audit_logs: List[Dict] = []
+        
+        # Initialize security subsystems
+        self.mfa_manager = MFAManager(settings)
+        self.rbac_manager = RBACManager()
+        self.abac_manager = ABACManager()
+        
+        # User sessions and security state
+        self.active_sessions: Dict[str, Dict] = {}
+        self.failed_login_attempts: Dict[str, List[datetime]] = {}
+        self.blocked_users: Dict[str, datetime] = {}
+    
+    # === Multi-Factor Authentication Methods ===
+    
+    async def setup_mfa(self, user_id: str, method: MFAMethod, user_email: str, 
+                       contact_info: Optional[str] = None) -> Dict[str, Any]:
+        """Setup MFA for a user"""
+        if method == MFAMethod.TOTP:
+            result = await self.mfa_manager.setup_totp(user_id, user_email)
+        else:
+            raise ValueError(f"MFA setup not supported for method: {method}")
+        
+        await self.log_audit_event(
+            AuditEventType.USER_UPDATED,
+            user_id=user_id,
+            details={"mfa_setup": True, "method": method.value}
+        )
+        
+        return result
+    
+    async def verify_mfa_setup(self, user_id: str, token: str) -> bool:
+        """Verify MFA setup completion"""
+        result = await self.mfa_manager.verify_totp_setup(user_id, token)
+        
+        await self.log_audit_event(
+            AuditEventType.USER_UPDATED if result else AuditEventType.SECURITY_VIOLATION,
+            user_id=user_id,
+            details={"mfa_setup_verification": result}
+        )
+        
+        return result
+    
+    async def initiate_mfa_challenge(self, user_id: str, method: MFAMethod, 
+                                   contact_info: Optional[str] = None) -> Dict[str, Any]:
+        """Initiate MFA challenge during login"""
+        result = await self.mfa_manager.initiate_mfa_challenge(user_id, method, contact_info)
+        
+        await self.log_audit_event(
+            AuditEventType.LOGIN,
+            user_id=user_id,
+            details={"mfa_challenge_initiated": True, "method": method.value}
+        )
+        
+        return result
+    
+    async def verify_mfa_challenge(self, challenge_id: str, response: str) -> Dict[str, Any]:
+        """Verify MFA challenge response"""
+        result = await self.mfa_manager.verify_mfa_challenge(challenge_id, response)
+        
+        if result.get("status") == MFAStatus.VERIFIED:
+            await self.log_audit_event(
+                AuditEventType.LOGIN,
+                user_id=result.get("user_id"),
+                details={"mfa_verified": True, "method": result.get("method")}
+            )
+        else:
+            await self.log_audit_event(
+                AuditEventType.LOGIN_FAILED,
+                user_id=result.get("user_id"),
+                details={"mfa_failed": True, "reason": result.get("message")}
+            )
+        
+        return result
+    
+    async def is_mfa_enabled(self, user_id: str) -> bool:
+        """Check if MFA is enabled for user"""
+        return await self.mfa_manager.is_mfa_enabled(user_id)
+    
+    # === Role-Based Access Control Methods ===
+    
+    async def assign_role(self, user_id: str, role_name: str, assigned_by: str) -> bool:
+        """Assign role to user"""
+        result = await self.rbac_manager.assign_role_to_user(user_id, role_name)
+        
+        await self.log_audit_event(
+            AuditEventType.PERMISSION_GRANTED,
+            user_id=user_id,
+            details={"role_assigned": role_name, "assigned_by": assigned_by}
+        )
+        
+        return result
+    
+    async def revoke_role(self, user_id: str, role_name: str, revoked_by: str) -> bool:
+        """Revoke role from user"""
+        result = await self.rbac_manager.revoke_role_from_user(user_id, role_name)
+        
+        await self.log_audit_event(
+            AuditEventType.PERMISSION_REVOKED,
+            user_id=user_id,
+            details={"role_revoked": role_name, "revoked_by": revoked_by}
+        )
+        
+        return result
+    
+    async def check_permission(self, user_id: str, permission: Permission, 
+                             resource_type: Optional[str] = None, 
+                             resource_id: Optional[str] = None,
+                             context: Optional[Dict[str, Any]] = None) -> bool:
+        """Check if user has permission with RBAC and ABAC evaluation"""
+        
+        # First check RBAC permissions
+        rbac_result = await self.rbac_manager.has_permission(
+            user_id, permission, resource_type, resource_id
+        )
+        
+        if rbac_result:
+            return True
+        
+        # If RBAC denies, check ABAC policies if context is provided
+        if context and resource_type and resource_id:
+            abac_result = await self.abac_manager.evaluate_access(
+                user_id, permission.value, resource_type, resource_id, context
+            )
+            
+            await self.log_audit_event(
+                AuditEventType.DATA_ACCESS,
+                user_id=user_id,
+                resource=f"{resource_type}:{resource_id}",
+                details={
+                    "permission": permission.value,
+                    "rbac_result": rbac_result,
+                    "abac_result": abac_result["decision"],
+                    "access_granted": abac_result["decision"] == PolicyEffect.ALLOW
+                }
+            )
+            
+            return abac_result["decision"] == PolicyEffect.ALLOW
+        
+        return False
+    
+    async def get_user_permissions(self, user_id: str) -> Dict[str, Any]:
+        """Get comprehensive user permissions from RBAC"""
+        permissions = await self.rbac_manager.get_user_permissions(user_id)
+        roles = await self.rbac_manager.get_user_roles(user_id)
+        
+        return {
+            "user_id": user_id,
+            "roles": list(roles),
+            "permissions": [p.value for p in permissions],
+            "permission_count": len(permissions)
+        }
+    
+    # === Enhanced Authentication Methods ===
+    
+    async def authenticate_with_mfa(self, username: str, password: str, 
+                                  mfa_token: Optional[str] = None,
+                                  challenge_id: Optional[str] = None,
+                                  request_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Enhanced authentication with MFA support"""
+        
+        # Check if user is blocked
+        if await self._is_user_blocked(username):
+            await self.log_audit_event(
+                AuditEventType.LOGIN_FAILED,
+                details={"username": username, "reason": "user_blocked"}
+            )
+            return {"success": False, "message": "Account temporarily blocked"}
+        
+        # Verify password (mock implementation - replace with actual user lookup)
+        user_data = await self._get_user_by_username(username)
+        if not user_data or not await self.verify_password(password, user_data.get("password_hash", "")):
+            await self._record_failed_login(username)
+            await self.log_audit_event(
+                AuditEventType.LOGIN_FAILED,
+                details={"username": username, "reason": "invalid_credentials"}
+            )
+            return {"success": False, "message": "Invalid credentials"}
+        
+        user_id = user_data["id"]
+        
+        # Check if MFA is required
+        if await self.is_mfa_enabled(user_id):
+            if not mfa_token and not challenge_id:
+                # Initiate MFA challenge
+                mfa_methods = await self.mfa_manager.get_user_mfa_methods(user_id)
+                if mfa_methods:
+                    challenge_result = await self.initiate_mfa_challenge(user_id, mfa_methods[0])
+                    return {
+                        "success": False,
+                        "requires_mfa": True,
+                        "challenge_id": challenge_result["challenge_id"],
+                        "method": challenge_result["method"]
+                    }
+            else:
+                # Verify MFA
+                if challenge_id and mfa_token:
+                    mfa_result = await self.verify_mfa_challenge(challenge_id, mfa_token)
+                    if mfa_result["status"] != MFAStatus.VERIFIED:
+                        return {"success": False, "message": "Invalid MFA token"}
+                else:
+                    return {"success": False, "message": "MFA token required"}
+        
+        # Clear failed login attempts
+        if username in self.failed_login_attempts:
+            del self.failed_login_attempts[username]
+        
+        # Create session and token
+        session_data = {
+            "user_id": user_id,
+            "username": username,
+            "roles": list(await self.rbac_manager.get_user_roles(user_id)),
+            "login_time": datetime.utcnow().isoformat(),
+            "mfa_verified": await self.is_mfa_enabled(user_id),
+            "context": request_context or {}
+        }
+        
+        access_token = await self.create_access_token({"sub": user_id, **session_data})
+        session_id = secrets.token_hex(32)
+        self.active_sessions[session_id] = session_data
+        
+        await self.log_audit_event(
+            AuditEventType.LOGIN,
+            user_id=user_id,
+            details={
+                "username": username,
+                "mfa_used": await self.is_mfa_enabled(user_id),
+                "session_id": session_id
+            }
+        )
+        
+        return {
+            "success": True,
+            "access_token": access_token,
+            "session_id": session_id,
+            "user": {
+                "id": user_id,
+                "username": username,
+                "roles": session_data["roles"]
+            }
+        }
+    
+    async def _is_user_blocked(self, username: str) -> bool:
+        """Check if user is temporarily blocked due to failed login attempts"""
+        if username in self.blocked_users:
+            block_until = self.blocked_users[username]
+            if datetime.utcnow() < block_until:
+                return True
+            else:
+                # Block period expired
+                del self.blocked_users[username]
+        
+        return False
+    
+    async def _record_failed_login(self, username: str):
+        """Record failed login attempt and block user if threshold exceeded"""
+        current_time = datetime.utcnow()
+        
+        if username not in self.failed_login_attempts:
+            self.failed_login_attempts[username] = []
+        
+        # Remove attempts older than 1 hour
+        cutoff_time = current_time - timedelta(hours=1)
+        self.failed_login_attempts[username] = [
+            attempt for attempt in self.failed_login_attempts[username]
+            if attempt > cutoff_time
+        ]
+        
+        self.failed_login_attempts[username].append(current_time)
+        
+        # Block user if too many failed attempts
+        if len(self.failed_login_attempts[username]) >= 5:
+            self.blocked_users[username] = current_time + timedelta(minutes=30)
+            await self.log_audit_event(
+                AuditEventType.SECURITY_VIOLATION,
+                details={
+                    "username": username,
+                    "reason": "too_many_failed_attempts",
+                    "blocked_until": self.blocked_users[username].isoformat()
+                }
+            )
+    
+    async def _get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        """Mock user lookup - replace with actual database query"""
+        # This is a mock implementation
+        mock_users = {
+            "admin": {
+                "id": "admin_user_123",
+                "username": "admin",
+                "email": "admin@company.com",
+                "password_hash": await self.hash_password("admin123"),
+                "roles": ["admin"]
+            },
+            "analyst": {
+                "id": "analyst_user_456",
+                "username": "analyst",
+                "email": "analyst@company.com",
+                "password_hash": await self.hash_password("analyst123"),
+                "roles": ["analyst"]
+            }
+        }
+        
+        return mock_users.get(username)
+    
+    # === Session Management ===
+    
+    async def validate_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Validate active session"""
+        if session_id not in self.active_sessions:
+            return None
+        
+        session = self.active_sessions[session_id]
+        login_time = datetime.fromisoformat(session["login_time"])
+        
+        # Check session timeout (configurable)
+        session_timeout = timedelta(hours=8)
+        if datetime.utcnow() - login_time > session_timeout:
+            await self.terminate_session(session_id)
+            return None
+        
+        return session
+    
+    async def terminate_session(self, session_id: str) -> bool:
+        """Terminate user session"""
+        if session_id in self.active_sessions:
+            session = self.active_sessions[session_id]
+            del self.active_sessions[session_id]
+            
+            await self.log_audit_event(
+                AuditEventType.LOGOUT,
+                user_id=session.get("user_id"),
+                details={"session_id": session_id, "terminated": True}
+            )
+            
+            return True
+        
+        return False
+    
+    async def get_active_sessions(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get active sessions, optionally filtered by user"""
+        sessions = []
+        
+        for session_id, session_data in self.active_sessions.items():
+            if user_id is None or session_data.get("user_id") == user_id:
+                sessions.append({
+                    "session_id": session_id,
+                    "user_id": session_data.get("user_id"),
+                    "username": session_data.get("username"),
+                    "login_time": session_data.get("login_time"),
+                    "mfa_verified": session_data.get("mfa_verified", False)
+                })
+        
+        return sessions
     
     async def hash_password(self, password: str) -> str:
         """Hash password using bcrypt"""

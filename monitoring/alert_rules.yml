@@ -1,0 +1,267 @@
+# Prometheus Alert Rules for Oatie AI Performance Monitoring
+# Enterprise-grade alerting for performance, availability, and business metrics
+
+groups:
+  - name: oatie_ai_performance
+    interval: 30s
+    rules:
+      # High-Level SLI/SLO Alerts
+      - alert: HighErrorRate
+        expr: (
+          sum(rate(http_requests_total{status=~"5.."}[5m])) /
+          sum(rate(http_requests_total[5m]))
+        ) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          service: oatie-ai
+          category: availability
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          runbook_url: "https://wiki.company.com/runbooks/high-error-rate"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 2.0
+        for: 3m
+        labels:
+          severity: warning
+          service: oatie-ai
+          category: performance
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s over the last 5 minutes"
+          runbook_url: "https://wiki.company.com/runbooks/high-response-time"
+
+      - alert: LowThroughput
+        expr: sum(rate(http_requests_total[5m])) < 10
+        for: 5m
+        labels:
+          severity: warning
+          service: oatie-ai
+          category: performance
+        annotations:
+          summary: "Low request throughput"
+          description: "Request rate is {{ $value }} requests/second over the last 5 minutes"
+
+  - name: oatie_ai_infrastructure
+    interval: 30s
+    rules:
+      # Database Performance Alerts
+      - alert: DatabaseHighConnections
+        expr: oracle_sessions_current / oracle_sessions_max > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+          category: capacity
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Oracle database is using {{ $value | humanizePercentage }} of available connections"
+
+      - alert: DatabaseSlowQueries
+        expr: avg(oracle_query_duration_seconds) > 5.0
+        for: 3m
+        labels:
+          severity: warning
+          service: database
+          category: performance
+        annotations:
+          summary: "Database queries running slowly"
+          description: "Average query time is {{ $value }}s over the last 5 minutes"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          service: redis
+          category: capacity
+        annotations:
+          summary: "Redis memory usage critically high"
+          description: "Redis is using {{ $value | humanizePercentage }} of available memory"
+
+      # System Resource Alerts
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+          category: capacity
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on instance {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.9
+        for: 3m
+        labels:
+          severity: critical
+          service: system
+          category: capacity
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} on instance {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) > 0.85
+        for: 1m
+        labels:
+          severity: warning
+          service: system
+          category: capacity
+        annotations:
+          summary: "Disk space running low on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.mountpoint }}"
+
+  - name: oatie_ai_business_metrics
+    interval: 60s
+    rules:
+      # Business KPI Alerts
+      - alert: LowReportGenerationRate
+        expr: sum(rate(reports_generated_total[1h])) < 5
+        for: 10m
+        labels:
+          severity: warning
+          service: oatie-ai
+          category: business
+        annotations:
+          summary: "Report generation rate is low"
+          description: "Only {{ $value }} reports generated per hour in the last hour"
+
+      - alert: HighReportFailureRate
+        expr: (
+          sum(rate(reports_failed_total[15m])) /
+          sum(rate(reports_generated_total[15m]))
+        ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: oatie-ai
+          category: business
+        annotations:
+          summary: "High report failure rate"
+          description: "Report failure rate is {{ $value | humanizePercentage }} over the last 15 minutes"
+
+      - alert: UserAuthenticationIssues
+        expr: sum(rate(auth_failures_total[5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+          service: oatie-ai
+          category: security
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value }} authentication failures per minute over the last 5 minutes"
+
+  - name: oatie_ai_performance_testing
+    interval: 300s  # Check every 5 minutes
+    rules:
+      # Performance Test Result Alerts
+      - alert: PerformanceTestFailed
+        expr: performance_test_success == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: oatie-ai
+          category: testing
+        annotations:
+          summary: "Performance test failed"
+          description: "Latest performance test run failed with score {{ $value }}"
+
+      - alert: PerformanceRegression
+        expr: performance_test_regression_detected == 1
+        for: 0m
+        labels:
+          severity: warning
+          service: oatie-ai
+          category: testing
+        annotations:
+          summary: "Performance regression detected"
+          description: "Performance regression detected in latest test run"
+
+      - alert: LoadTestHighErrorRate
+        expr: performance_test_error_rate > 0.02
+        for: 0m
+        labels:
+          severity: warning
+          service: oatie-ai
+          category: testing
+        annotations:
+          summary: "Load test error rate high"
+          description: "Load test error rate is {{ $value | humanizePercentage }}"
+
+  - name: oatie_ai_availability
+    interval: 30s
+    rules:
+      # Service Availability Alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: "{{ $labels.job }}"
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} on instance {{ $labels.instance }} has been down for more than 1 minute"
+
+      - alert: EndpointDown
+        expr: probe_success == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: oatie-ai
+          category: availability
+        annotations:
+          summary: "Endpoint {{ $labels.instance }} is down"
+          description: "Endpoint {{ $labels.instance }} has been unreachable for 30 seconds"
+
+      - alert: HealthCheckFailing
+        expr: health_check_success == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: oatie-ai
+          category: availability
+        annotations:
+          summary: "Health check failing"
+          description: "Application health check has been failing for 2 minutes"
+
+  - name: oatie_ai_security
+    interval: 60s
+    rules:
+      # Security Alerts
+      - alert: SuspiciousRequestPattern
+        expr: sum(rate(http_requests_total{status="403"}[5m])) > 50
+        for: 2m
+        labels:
+          severity: warning
+          service: oatie-ai
+          category: security
+        annotations:
+          summary: "High rate of 403 Forbidden responses"
+          description: "{{ $value }} forbidden requests per minute, possible attack"
+
+      - alert: HighRequestRate
+        expr: sum(rate(http_requests_total[1m])) > 1000
+        for: 2m
+        labels:
+          severity: warning
+          service: oatie-ai
+          category: security
+        annotations:
+          summary: "Unusually high request rate"
+          description: "Request rate is {{ $value }} requests/minute, possible DDoS"
+
+      - alert: CertificateExpiringSoon
+        expr: (ssl_certificate_expiry_timestamp - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          service: oatie-ai
+          category: security
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value }} days"

@@ -1,0 +1,249 @@
+# Staging Environment Deployment
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [develop, feature/*]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  KUBERNETES_NAMESPACE: oatie-ai-staging
+
+jobs:
+  # Build and test for staging
+  build-staging:
+    name: Build for Staging
+    runs-on: ubuntu-latest
+    outputs:
+      frontend-image: ${{ steps.meta-frontend.outputs.tags }}
+      backend-image: ${{ steps.meta-backend.outputs.tags }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
+          tags: |
+            type=ref,event=branch,suffix=-staging
+            type=ref,event=pr,suffix=-staging
+            type=sha,prefix=staging-
+
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
+          tags: |
+            type=ref,event=branch,suffix=-staging
+            type=ref,event=pr,suffix=-staging
+            type=sha,prefix=staging-
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./infrastructure/docker/Dockerfile.frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./infrastructure/docker/Dockerfile.backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Run comprehensive tests
+  test-suite:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: [build-staging]
+    strategy:
+      matrix:
+        test-type: [unit, integration, e2e]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx pytest-cov
+
+      - name: Run unit tests
+        if: matrix.test-type == 'unit'
+        run: |
+          echo "Running unit tests..."
+          # Frontend tests
+          npm run test:run
+          # Backend tests
+          cd backend && python -m pytest tests/unit/ -v --cov
+
+      - name: Run integration tests
+        if: matrix.test-type == 'integration'
+        run: |
+          echo "Running integration tests..."
+          cd backend && python -m pytest tests/integration/ -v
+
+      - name: Run E2E tests
+        if: matrix.test-type == 'e2e'
+        run: |
+          echo "Running E2E tests..."
+          # Start test environment
+          docker-compose -f docker-compose.test.yml up -d
+          # Wait for services
+          sleep 30
+          # Run E2E tests
+          npm run test:e2e || true
+          # Cleanup
+          docker-compose -f docker-compose.test.yml down
+
+  # Deploy to staging environment
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-staging, test-suite]
+    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.STAGING_KUBE_CONFIG }}
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment"
+          
+          # Update image tags in staging manifests
+          sed -i "s|image: .*frontend:.*|image: ${{ needs.build-staging.outputs.frontend-image }}|g" \
+            infrastructure/kubernetes/staging/frontend-deployment.yaml
+          sed -i "s|image: .*backend:.*|image: ${{ needs.build-staging.outputs.backend-image }}|g" \
+            infrastructure/kubernetes/staging/backend-deployment.yaml
+          
+          # Apply staging configurations
+          kubectl apply -f infrastructure/kubernetes/staging/ -n ${{ env.KUBERNETES_NAMESPACE }}
+          
+          # Wait for rollout
+          kubectl rollout status deployment/oatie-frontend -n ${{ env.KUBERNETES_NAMESPACE }} --timeout=300s
+          kubectl rollout status deployment/oatie-backend -n ${{ env.KUBERNETES_NAMESPACE }} --timeout=300s
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on staging"
+          
+          # Get staging URL
+          STAGING_URL=$(kubectl get ingress oatie-staging -n ${{ env.KUBERNETES_NAMESPACE }} \
+            -o jsonpath='{.spec.rules[0].host}')
+          
+          # Basic health checks
+          curl -f https://$STAGING_URL/health
+          curl -f https://$STAGING_URL/api/health
+          
+          echo "Smoke tests passed"
+
+      - name: Run performance tests
+        run: |
+          echo "Running performance tests on staging"
+          
+          # Install performance testing tools
+          pip install locust
+          
+          # Run performance tests
+          python scripts/performance_test.py \
+            --base-url https://staging.oatie.company.com \
+            --users 50 \
+            --duration 5 \
+            --output staging_performance.json
+          
+          echo "Performance tests completed"
+
+  # Security scanning
+  security-scan-staging:
+    name: Security Scan Staging
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run OWASP ZAP security scan
+        uses: zaproxy/action-full-scan@v0.10.0
+        with:
+          target: 'https://staging.oatie.company.com'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+      - name: Run container image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build-staging.outputs.backend-image }}
+          format: 'sarif'
+          output: 'trivy-staging-results.sarif'
+
+      - name: Upload security scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-staging-results.sarif'
+
+  # Notify teams
+  notify:
+    name: Notify Teams
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, security-scan-staging]
+    if: always()
+    steps:
+      - name: Notify deployment status
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Staging deployment ${{ job.status }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
