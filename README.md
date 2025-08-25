@@ -153,23 +153,6 @@ Leveraging **GitHub Pro's 3,000 Actions minutes** for comprehensive automation:
 - 📊 **Performance Testing**: Load testing with Artillery
 - 📈 **Monitoring**: Health checks and metrics
 
-## 🛠️ Development Workflow
-
-### Branch Protection Rules
-- ✅ **Required Reviews**: Minimum 1 reviewer
-- ✅ **Status Checks**: All tests must pass
-- ✅ **Up-to-date**: Branches must be current
-- ✅ **Admin Enforcement**: No bypass for admins
-
-### Code Review Process
-1. **Feature Branch**: Create from `develop`
-2. **Development**: Use GitHub Copilot for acceleration
-3. **Testing**: Local + CI pipeline validation
-4. **Pull Request**: Automated review assignment
-5. **Review**: Code quality and functionality review
-6. **Merge**: Squash and merge to `develop`
-7. **Release**: Tag-based production deployment
-
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -299,3 +282,47 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Built with ❤️ using GitHub Pro features including 3,000 Actions minutes, advanced security scanning, and GitHub Copilot integration.**
+
+## 🔄 Development Watchdog (Auto-Restart)
+
+To avoid manual intervention when a service hangs, a watchdog monitors both backend (port 8000) and frontend (port 5173) and restarts them after consecutive health check failures.
+
+### Option 1: PowerShell (Windows)
+Run in a dedicated terminal:
+```powershell
+pwsh -ExecutionPolicy Bypass -File ./scripts/dev_watch.ps1 -CheckIntervalSeconds 15 -UnhealthyThreshold 3
+```
+Flags:
+- `-CheckIntervalSeconds`: Seconds between checks (default 15)
+- `-UnhealthyThreshold`: Consecutive failures before restart (default 3)
+- `-VerboseLog`: Add for detailed logs
+
+### Option 2: Cross-Platform Python
+```bash
+python ./scripts/watchdog.py
+```
+Environment variables (optional):
+- `OATIE_BACKEND_PORT` (default 8000)
+- `OATIE_FRONTEND_PORT` (default 5173)
+- `OATIE_WATCH_INTERVAL` (seconds, default 15)
+- `OATIE_WATCH_THRESHOLD` (default 3)
+
+### What It Does
+1. Health check: `GET /health/live` (backend) & `/` (frontend)
+2. If a service fails N consecutive checks → terminate related processes (`uvicorn/python` or `node/npm`)
+3. Restarts with dependency steps:
+   - Backend: activates `.venv`, `pip install -e .`, launches `uvicorn`
+   - Frontend: `npm install` (first run only), `npm run dev`
+
+### Initial Setup (after killing prior shells)
+```powershell
+# Recreate virtual env if missing
+python -m venv backend/.venv
+& backend/.venv/Scripts/Activate.ps1
+pip install -e backend
+# Frontend deps
+cd frontend; npm install; cd ..
+```
+Start watchdog afterward. Stop with `Ctrl+C`.
+
+> Use only in dev. For production rely on process managers (systemd, Docker healthchecks, Kubernetes, etc.).
