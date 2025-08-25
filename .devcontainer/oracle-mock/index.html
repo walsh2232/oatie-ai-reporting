@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle BI Publisher Mock Service</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            color: #d62d20;
+            margin-bottom: 30px;
+        }
+        .endpoint {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #d62d20;
+            border-radius: 4px;
+        }
+        .method {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .status {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ Oracle BI Publisher Mock Service</h1>
+            <p>Development Environment for Oatie AI Platform</p>
+        </div>
+
+        <div class="status">
+            ✅ Mock Service Running - Ready for Development
+        </div>
+
+        <h2>Available Mock Endpoints</h2>
+        
+        <div class="endpoint">
+            <span class="method">GET</span> <code>/xmlpserver</code><br>
+            <small>Basic service information</small>
+        </div>
+
+        <div class="endpoint">
+            <span class="method">GET</span> <code>/xmlpserver/services/v2/reports</code><br>
+            <small>List available reports</small>
+        </div>
+
+        <div class="endpoint">
+            <span class="method">POST</span> <code>/xmlpserver/services/v2/reports/{id}/run</code><br>
+            <small>Execute a report</small>
+        </div>
+
+        <div class="endpoint">
+            <span class="method">GET</span> <code>/xmlpserver/services/v2/catalog/folders</code><br>
+            <small>Browse catalog folders</small>
+        </div>
+
+        <div class="endpoint">
+            <span class="method">GET</span> <code>/xmlpserver/services/v2/datasources</code><br>
+            <small>List data sources</small>
+        </div>
+
+        <h2>Configuration</h2>
+        <p>This mock service simulates Oracle BI Publisher REST API responses for development purposes.</p>
+        <p><strong>Base URL:</strong> <code>http://localhost:9502</code></p>
+        <p><strong>Username:</strong> <code>weblogic</code></p>
+        <p><strong>Password:</strong> <code>password</code></p>
+
+        <h2>Integration Status</h2>
+        <p>✅ Authentication endpoints</p>
+        <p>✅ Report management</p>
+        <p>✅ Catalog navigation</p>
+        <p>✅ Data source testing</p>
+    </div>
+</body>
+</html>
