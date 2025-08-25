@@ -86,9 +86,9 @@ const Dashboard: React.FC<DashboardProps> = ({ userName = 'Oracle User', onLogou
         // Update dashboard with real data
         if (results.every(result => result.success)) {
           setDashboardData({
-            reportMetrics: results[0].data?.data || dashboardData.reportMetrics,
-            performanceData: results[1].data?.data || dashboardData.performanceData,
-            statusDistribution: results[2].data?.data || dashboardData.statusDistribution,
+            reportMetrics: (results[0].data as any) || dashboardData.reportMetrics,
+            performanceData: (results[1].data as any) || dashboardData.performanceData,
+            statusDistribution: (results[2].data as any) || dashboardData.statusDistribution,
           });
         }
 
@@ -372,7 +372,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userName = 'Oracle User', onLogou
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={dashboardData.statusDistribution}
+                        data={dashboardData.statusDistribution && Array.isArray(dashboardData.statusDistribution) ? dashboardData.statusDistribution : []}
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
@@ -380,7 +380,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userName = 'Oracle User', onLogou
                         dataKey="value"
                         label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
                       >
-                        {dashboardData.statusDistribution.map((entry, index) => (
+                        {(dashboardData.statusDistribution && Array.isArray(dashboardData.statusDistribution) ? dashboardData.statusDistribution : []).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
