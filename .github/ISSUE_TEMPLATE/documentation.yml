@@ -1,0 +1,97 @@
+name: Documentation Issue
+description: Report an issue with documentation or request documentation improvements
+title: "[DOCS] "
+labels: ["type:documentation", "priority:P3", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Please provide details about the documentation issue or improvement you'd like to see.
+
+  - type: dropdown
+    id: doc_type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation needs attention?
+      options:
+        - README
+        - API Documentation
+        - Contributing Guidelines
+        - Architecture Documentation
+        - Code Comments
+        - Setup Instructions
+        - Troubleshooting Guide
+        - User Guide
+        - Developer Guide
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - Missing Documentation
+        - Incorrect Information
+        - Outdated Content
+        - Unclear Instructions
+        - Typo/Grammar
+        - Broken Links
+        - Missing Examples
+        - Improvement Suggestion
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the documentation issue or improvement request
+      placeholder: Please provide a clear description of what's wrong or what needs to be improved...
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: Where is this documentation located?
+      placeholder: |
+        - File: [e.g., README.md, docs/api.md]
+        - Section: [e.g., "Installation" section]
+        - Line numbers: [if applicable]
+        - URL: [if applicable]
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested_fix
+    attributes:
+      label: Suggested Fix
+      description: If you have suggestions for how to fix or improve this documentation, please describe them
+      placeholder: Describe your suggested changes or improvements...
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: How does this documentation issue affect users or developers?
+      placeholder: |
+        - Who is affected: [new contributors, end users, developers, etc.]
+        - What problems does it cause: [confusion, setup failures, etc.]
+        - Frequency: [how often do people encounter this issue]
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm you have done the following
+      options:
+        - label: I have searched for existing documentation issues and this is not a duplicate
+          required: true
+        - label: I have clearly described the documentation issue
+          required: true
+        - label: I have specified the location of the problematic documentation
+          required: true

@@ -1,0 +1,132 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for Oatie AI Reporting Platform
+title: "[FEATURE] "
+labels: ["type:feature", "priority:P3", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible to help us understand your request and evaluate its implementation.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What is the current limitation?
+      placeholder: Describe the problem or limitation this feature would address...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see implemented
+      placeholder: Describe your proposed solution in detail...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component would this feature affect?
+      options:
+        - Dashboard
+        - Oracle Connection
+        - Reports
+        - Data Visualization
+        - Authentication
+        - API
+        - Database
+        - Documentation
+        - Developer Tools
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature?
+      options:
+        - P1 (Critical - Blocking major functionality)
+        - P2 (High - Important for user experience)
+        - P3 (Medium - Nice to have)
+        - P4 (Low - Enhancement or optimization)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Describe any alternative solutions or features you've considered
+      placeholder: Are there any workarounds or alternative approaches?
+
+  - type: textarea
+    id: usecases
+    attributes:
+      label: Use Cases
+      description: Describe specific use cases where this feature would be valuable
+      placeholder: |
+        1. As a [user type], I want to [action] so that [benefit]
+        2. When [scenario], this feature would help by [benefit]
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What criteria must be met for this feature to be considered complete?
+      placeholder: |
+        - [ ] Feature requirement 1
+        - [ ] Feature requirement 2
+        - [ ] Feature requirement 3
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: How complex do you think this feature would be to implement?
+      options:
+        - Simple (Few hours of work)
+        - Medium (1-3 days of work)
+        - Complex (1-2 weeks of work)
+        - Major (Multiple weeks/months)
+        - Unknown
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Screenshots
+      description: If applicable, add mockups, wireframes, or screenshots
+      placeholder: Drag and drop images here or paste image URLs...
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: Technical Considerations
+      description: Any technical considerations, dependencies, or constraints?
+      placeholder: |
+        - Dependencies: [libraries, services, etc.]
+        - Performance considerations: [memory, speed, etc.]
+        - Security implications: [authentication, data privacy, etc.]
+        - Oracle Database considerations: [schema changes, performance, etc.]
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm you have done the following
+      options:
+        - label: I have searched for existing feature requests and this is not a duplicate
+          required: true
+        - label: I have provided a clear problem statement and proposed solution
+          required: true
+        - label: I have described specific use cases for this feature
+          required: true
+        - label: I have considered alternative solutions
+          required: true
