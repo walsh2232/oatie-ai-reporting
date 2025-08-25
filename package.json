@@ -1,0 +1,85 @@
+{
+  "name": "oatie-ai-reporting-frontend",
+  "version": "0.1.0",
+  "description": "Frontend for Oatie AI Reporting - Oracle BI Publisher AI Assistant with Oracle Redwood Design System",
+  "main": "src/index.tsx",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint src --ext ts,tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:ui": "vitest --ui",
+    "clean": "rm -rf dist node_modules/.cache"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0",
+    "@oracle/oraclejet": "^15.0.0",
+    "@oracle/oraclejet-tooling": "^15.0.0",
+    "axios": "^1.6.0",
+    "react-query": "^3.39.0",
+    "zustand": "^4.4.0",
+    "react-hook-form": "^7.47.0",
+    "zod": "^3.22.0",
+    "@hookform/resolvers": "^3.3.0",
+    "lucide-react": "^0.290.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@vitejs/plugin-react": "^4.1.0",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-import": "^2.29.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.2.0",
+    "vite": "^4.5.0",
+    "vitest": "^0.34.0",
+    "@vitest/ui": "^0.34.0",
+    "@vitest/coverage-v8": "^0.34.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^6.1.0",
+    "@testing-library/user-event": "^14.5.0",
+    "jsdom": "^22.1.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.3.0"
+  },
+  "keywords": [
+    "react",
+    "typescript",
+    "oracle",
+    "bi-publisher",
+    "ai",
+    "reporting",
+    "redwood",
+    "frontend"
+  ],
+  "author": "Walsh <walsh2232@users.noreply.github.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/walsh2232/oatie-ai-reporting.git"
+  },
+  "bugs": {
+    "url": "https://github.com/walsh2232/oatie-ai-reporting/issues"
+  },
+  "homepage": "https://github.com/walsh2232/oatie-ai-reporting#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
