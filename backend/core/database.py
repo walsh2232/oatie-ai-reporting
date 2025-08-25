@@ -149,5 +149,5 @@ class DatabaseManager:
                     await session.rollback()
                     raise
         else:
-            # Mock session for demo
-            yield None
+            # No session factory available; raise an error instead of yielding None
+            raise RuntimeError("No session factory available. Cannot provide a database session.")
