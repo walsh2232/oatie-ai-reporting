@@ -4,7 +4,7 @@ Supports multi-environment deployments and security best practices
 """
 
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings
 
@@ -45,9 +45,41 @@ class Settings(BaseSettings):
     oauth2_client_secret: Optional[str] = None
     active_directory_domain: Optional[str] = None
     
+    # Multi-Factor Authentication
+    mfa_required_for_admins: bool = True
+    mfa_token_validity_minutes: int = 5
+    mfa_backup_codes_count: int = 10
+    totp_issuer_name: str = "Oatie AI Reporting"
+    
+    # Session Management
+    session_timeout_hours: int = 8
+    max_concurrent_sessions: int = 5
+    session_cleanup_interval_minutes: int = 30
+    
+    # Account Security
+    max_failed_login_attempts: int = 5
+    account_lockout_duration_minutes: int = 30
+    password_min_length: int = 8
+    password_require_special_chars: bool = True
+    password_require_numbers: bool = True
+    password_require_uppercase: bool = True
+    
     # Encryption
     encryption_key: str = Field(default="your-encryption-key-32-chars-long", description="Data encryption key")
     encryption_algorithm: str = "AES-256-GCM"
+    
+    # Security Monitoring
+    enable_threat_detection: bool = True
+    security_alert_thresholds: Dict[str, int] = {
+        "failed_logins_24h": 10,
+        "security_violations_24h": 5,
+        "high_risk_events_24h": 3
+    }
+    
+    # Compliance
+    audit_log_retention_days: int = 365
+    compliance_mode: str = "soc2"  # soc2, gdpr, hipaa, pci_dss
+    data_classification_enabled: bool = True
     
     # CORS and Security Headers
     cors_origins: List[str] = ["http://localhost:3000", "https://app.oatie.com"]

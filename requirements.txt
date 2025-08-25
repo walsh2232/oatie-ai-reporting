@@ -20,11 +20,16 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 authlib==1.2.1
+cryptography==41.0.7
+
+# Multi-Factor Authentication
+pyotp==2.9.0
+qrcode[pil]==7.4.2
 
 # API & GraphQL
 graphene==3.3.0
 strawberry-graphql==0.216.1
-webhooks==0.6.0
+webhooks==0.4.2
 
 # Monitoring & Observability
 prometheus-client==0.19.0
