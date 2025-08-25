@@ -1,0 +1,40 @@
+apiVersion: v2
+name: oatie
+description: Oatie AI Oracle BI Publisher Platform Helm Chart
+type: application
+version: 3.0.0
+appVersion: "3.0.0"
+keywords:
+  - oracle
+  - bi
+  - reporting
+  - ai
+  - analytics
+home: https://github.com/walsh2232/oatie-ai-reporting
+sources:
+  - https://github.com/walsh2232/oatie-ai-reporting
+maintainers:
+  - name: Platform Engineering Team
+    email: platform@oatie.company.com
+
+dependencies:
+  - name: postgresql
+    version: "12.12.10"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+  - name: redis
+    version: "18.4.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  - name: prometheus
+    version: "23.4.0"
+    repository: "https://prometheus-community.github.io/helm-charts"
+    condition: monitoring.prometheus.enabled
+  - name: grafana
+    version: "7.0.17"
+    repository: "https://grafana.github.io/helm-charts"
+    condition: monitoring.grafana.enabled
+
+annotations:
+  category: Analytics
+  licenses: MIT

@@ -1,0 +1,120 @@
+{
+  "test_summary": {
+    "total_requests": 359,
+    "successful_requests": 0,
+    "failed_requests": 359,
+    "success_rate_percent": 0.0,
+    "test_duration_seconds": 114.25,
+    "requests_per_second": 3.14
+  },
+  "response_times": {
+    "average_ms": 0,
+    "median_ms": 0,
+    "p95_ms": 0,
+    "p99_ms": 0,
+    "min_ms": 0,
+    "max_ms": 0
+  },
+  "status_codes": {
+    "0": 359
+  },
+  "endpoint_performance": {
+    "GET /api/v1/queries/history": {
+      "count": 20,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    },
+    "GET /api/v1/reports": {
+      "count": 64,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    },
+    "GET /api/v1/templates": {
+      "count": 35,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    },
+    "POST /graphql": {
+      "count": 35,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    },
+    "POST /api/v1/reports/generate": {
+      "count": 49,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    },
+    "POST /api/v1/sql/generate": {
+      "count": 95,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    },
+    "GET /api/v1/users/profile": {
+      "count": 17,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    },
+    "GET /api/v1/analytics/dashboard": {
+      "count": 34,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    },
+    "GET /health": {
+      "count": 7,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    },
+    "POST /api/v1/auth/login": {
+      "count": 3,
+      "success_count": 0,
+      "min_time": 0,
+      "max_time": 0,
+      "avg_time": 0,
+      "success_rate": 0
+    }
+  },
+  "errors": {
+    "Cannot connect to host localhost:8000 ssl:default [Multiple exceptions: [Errno 111] Connect call failed ('::1', 8000, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 8000)]": 180,
+    "Cannot connect to host localhost:8000 ssl:default [Multiple exceptions: [Errno 111] Connect call failed ('127.0.0.1', 8000), [Errno 111] Connect call failed ('::1', 8000, 0, 0)]": 179
+  },
+  "performance_assessment": {
+    "grade": "ACCEPTABLE",
+    "issues": [
+      "Success rate (0.0%) below target (99%)",
+      "Throughput (3.1 RPS) may be insufficient for target load"
+    ],
+    "recommendations": [
+      "Investigate failed requests and improve error handling",
+      "Scale infrastructure and optimize application performance"
+    ],
+    "meets_enterprise_requirements": false
+  },
+  "generated_at": "2025-08-25T18:09:04.510599"
+}

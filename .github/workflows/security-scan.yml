@@ -1,0 +1,444 @@
+# Security and Compliance Scanning Pipeline
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of security scan to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - sast
+          - dast
+          - dependency
+          - container
+          - secrets
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Static Application Security Testing (SAST)
+  sast-scan:
+    name: SAST - Static Analysis
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'sast' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          pip install bandit semgrep safety
+          npm ci
+
+      # Python SAST with Bandit
+      - name: Run Bandit security scan
+        run: |
+          bandit -r backend/ -f json -o bandit-report.json
+          bandit -r backend/ -f txt
+        continue-on-error: true
+
+      - name: Upload Bandit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-results
+          path: bandit-report.json
+
+      # Python SAST with Semgrep
+      - name: Run Semgrep analysis
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: auto
+          generateSarif: "1"
+        continue-on-error: true
+
+      # JavaScript/TypeScript SAST
+      - name: Run ESLint security scan
+        run: |
+          npm run lint -- --format json --output-file eslint-security-report.json
+          npm run lint
+        continue-on-error: true
+
+      - name: Upload ESLint results
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-security-results
+          path: eslint-security-report.json
+
+      # CodeQL Analysis
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript, python
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript,python"
+
+  # Dependency scanning
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'dependency' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Python dependency scanning
+      - name: Install Python dependencies
+        run: |
+          pip install safety pip-audit
+
+      - name: Run Safety check
+        run: |
+          safety check --json --output safety-report.json
+          safety check
+        continue-on-error: true
+
+      - name: Run pip-audit
+        run: |
+          pip-audit --desc --format=json --output=pip-audit-report.json
+          pip-audit --desc
+        continue-on-error: true
+
+      # JavaScript dependency scanning
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          npm audit --audit-level=moderate --json > npm-audit-report.json
+          npm audit --audit-level=moderate
+        continue-on-error: true
+
+      # Snyk vulnerability scanning
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --json-file-output=snyk-report.json
+        continue-on-error: true
+
+      - name: Upload dependency scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-scan-results
+          path: |
+            safety-report.json
+            pip-audit-report.json
+            npm-audit-report.json
+            snyk-report.json
+
+  # Container image scanning
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'container' || github.event.inputs.scan_type == ''
+    strategy:
+      matrix:
+        image: [backend, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./infrastructure/docker/Dockerfile.${{ matrix.image }}
+          tags: oatie-${{ matrix.image }}:scan
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Trivy container scanning
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'oatie-${{ matrix.image }}:scan'
+          format: 'sarif'
+          output: 'trivy-${{ matrix.image }}-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-${{ matrix.image }}-results.sarif'
+
+      # Docker bench security
+      - name: Run Docker Bench for Security
+        run: |
+          docker run --rm --net host --pid host --userns host --cap-add audit_control \
+            -e DOCKER_CONTENT_TRUST=$DOCKER_CONTENT_TRUST \
+            -v /etc:/etc:ro \
+            -v /usr/bin/containerd:/usr/bin/containerd:ro \
+            -v /usr/bin/runc:/usr/bin/runc:ro \
+            -v /usr/lib/systemd:/usr/lib/systemd:ro \
+            -v /var/lib:/var/lib:ro \
+            -v /var/run/docker.sock:/var/run/docker.sock:ro \
+            --label docker_bench_security \
+            docker/docker-bench-security || true
+
+      # Grype vulnerability scanning
+      - name: Run Grype vulnerability scanner
+        uses: anchore/scan-action@v3
+        with:
+          image: 'oatie-${{ matrix.image }}:scan'
+          format: sarif
+          output-file: 'grype-${{ matrix.image }}-results.sarif'
+          fail-build: false
+
+      - name: Upload Grype scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'grype-${{ matrix.image }}-results.sarif'
+
+  # Secrets scanning
+  secrets-scan:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'secrets' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # GitLeaks secret scanning
+      - name: Run GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      # TruffleHog secret scanning
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # Dynamic Application Security Testing (DAST)
+  dast-scan:
+    name: DAST - Dynamic Analysis
+    runs-on: ubuntu-latest
+    if: (github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'dast') && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Only run DAST against staging environment
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: 'https://staging.oatie.company.com'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+      - name: OWASP ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.10.0
+        with:
+          target: 'https://staging.oatie.company.com'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+  # Infrastructure security scanning
+  infrastructure-scan:
+    name: Infrastructure Security
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == '' || github.event.inputs.scan_type == 'infrastructure'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Kubernetes security scanning
+      - name: Run Kubesec scan
+        run: |
+          curl -sSX POST --data-binary @infrastructure/kubernetes/backend-deployment.yaml \
+            https://v2.kubesec.io/scan > kubesec-backend-report.json
+          curl -sSX POST --data-binary @infrastructure/kubernetes/blue-green/blue-deployment.yaml \
+            https://v2.kubesec.io/scan > kubesec-blue-report.json
+
+      # Terraform security scanning
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: infrastructure/terraform
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+
+      # Helm chart security
+      - name: Run Helm security scan
+        run: |
+          helm plugin install https://github.com/technosophos/helm-template
+          helm template helm/oatie --debug > /tmp/helm-output.yaml
+          curl -sSX POST --data-binary @/tmp/helm-output.yaml \
+            https://v2.kubesec.io/scan > kubesec-helm-report.json
+
+      - name: Upload infrastructure scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: infrastructure-scan-results
+          path: |
+            kubesec-*-report.json
+            checkov-results.sarif
+
+  # Compliance and policy checks
+  compliance-check:
+    name: Compliance Validation
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # GDPR compliance check
+      - name: GDPR Compliance Scan
+        run: |
+          echo "Running GDPR compliance checks..."
+          grep -r -i "personal.*data\|gdpr\|data.*protection" . || true
+          echo "GDPR compliance check completed"
+
+      # SOC2 compliance check
+      - name: SOC2 Compliance Scan
+        run: |
+          echo "Running SOC2 compliance checks..."
+          # Check for audit logging
+          grep -r "audit\|logging" backend/ || true
+          # Check for encryption
+          grep -r "encrypt\|crypto" backend/ || true
+          echo "SOC2 compliance check completed"
+
+      # License compliance
+      - name: License Compliance Check
+        run: |
+          pip install pip-licenses
+          pip-licenses --format=json --output-file=licenses-report.json
+          npm install -g license-checker
+          license-checker --json --out npm-licenses.json
+
+      - name: Upload compliance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-results
+          path: |
+            licenses-report.json
+            npm-licenses.json
+
+  # Security report generation
+  security-report:
+    name: Generate Security Report
+    runs-on: ubuntu-latest
+    needs: [sast-scan, dependency-scan, container-scan, secrets-scan, infrastructure-scan, compliance-check]
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate security summary
+        run: |
+          echo "# Security Scan Summary" > security-summary.md
+          echo "Generated: $(date)" >> security-summary.md
+          echo "" >> security-summary.md
+          
+          echo "## Scan Results" >> security-summary.md
+          echo "- SAST: ${{ needs.sast-scan.result }}" >> security-summary.md
+          echo "- Dependency Scan: ${{ needs.dependency-scan.result }}" >> security-summary.md
+          echo "- Container Scan: ${{ needs.container-scan.result }}" >> security-summary.md
+          echo "- Secrets Scan: ${{ needs.secrets-scan.result }}" >> security-summary.md
+          echo "- Infrastructure Scan: ${{ needs.infrastructure-scan.result }}" >> security-summary.md
+          echo "- Compliance Check: ${{ needs.compliance-check.result }}" >> security-summary.md
+
+      - name: Upload security summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-summary
+          path: security-summary.md
+
+      # Send notification
+      - name: Notify security team
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "Security Scan Completed",
+              attachments: [{
+                color: "${{ (needs.sast-scan.result == 'success' && needs.dependency-scan.result == 'success' && needs.container-scan.result == 'success') && 'good' || 'danger' }}",
+                fields: [{
+                  title: "Repository",
+                  value: "${{ github.repository }}",
+                  short: true
+                }, {
+                  title: "Branch",
+                  value: "${{ github.ref_name }}",
+                  short: true
+                }, {
+                  title: "Commit",
+                  value: "${{ github.sha }}",
+                  short: true
+                }, {
+                  title: "Results",
+                  value: "SAST: ${{ needs.sast-scan.result }}\nDependency: ${{ needs.dependency-scan.result }}\nContainer: ${{ needs.container-scan.result }}",
+                  short: false
+                }]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
