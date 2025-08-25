@@ -1,0 +1,258 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Oatie AI Performance Dashboard",
+    "description": "Enterprise performance monitoring dashboard for Oatie AI Reporting Platform",
+    "tags": ["oatie-ai", "performance", "monitoring"],
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (RPS)",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 50},
+                {"color": "green", "value": 100}
+              ]
+            },
+            "unit": "reqps"
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m]))",
+            "legendFormat": "Requests/sec",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Response Time (95th Percentile)",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 2}
+              ]
+            },
+            "unit": "s"
+          }
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+            "legendFormat": "P95 Response Time",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 0.01},
+                {"color": "red", "value": 0.05}
+              ]
+            },
+            "unit": "percentunit"
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Concurrent Users",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 500},
+                {"color": "red", "value": 900}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "targets": [
+          {
+            "expr": "active_user_sessions",
+            "legendFormat": "Active Users",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Response Time Over Time",
+        "type": "timeseries",
+        "gridPos": {"h": 9, "w": 12, "x": 0, "y": 8},
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "ms"
+          }
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "P99",
+            "refId": "C"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Request Volume by Endpoint",
+        "type": "timeseries",
+        "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m])) by (endpoint)",
+            "legendFormat": "{{endpoint}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Database Performance",
+        "type": "timeseries",
+        "gridPos": {"h": 9, "w": 12, "x": 0, "y": 17},
+        "targets": [
+          {
+            "expr": "avg(oracle_query_duration_seconds) * 1000",
+            "legendFormat": "Avg Query Time (ms)",
+            "refId": "A"
+          },
+          {
+            "expr": "oracle_active_connections",
+            "legendFormat": "Active Connections",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "System Resources",
+        "type": "timeseries",
+        "gridPos": {"h": 9, "w": 12, "x": 12, "y": 17},
+        "targets": [
+          {
+            "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "CPU Usage %",
+            "refId": "A"
+          },
+          {
+            "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+            "legendFormat": "Memory Usage %",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Performance Test Results",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 26},
+        "targets": [
+          {
+            "expr": "performance_test_avg_response_time",
+            "legendFormat": "Avg Response Time (ms)",
+            "refId": "A",
+            "format": "table"
+          },
+          {
+            "expr": "performance_test_success_rate",
+            "legendFormat": "Success Rate (%)",
+            "refId": "B",
+            "format": "table"
+          },
+          {
+            "expr": "performance_test_throughput",
+            "legendFormat": "Throughput (RPS)",
+            "refId": "C",
+            "format": "table"
+          }
+        ]
+      }
+    ],
+    "variables": [
+      {
+        "name": "environment",
+        "type": "query",
+        "query": "label_values(up, environment)",
+        "current": {"value": "production", "text": "production"}
+      },
+      {
+        "name": "instance",
+        "type": "query",
+        "query": "label_values(up{environment=\"$environment\"}, instance)",
+        "current": {"value": "all", "text": "All"}
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "prometheus",
+          "expr": "deployment_timestamp",
+          "textFormat": "Deployment: {{version}}",
+          "iconColor": "blue"
+        },
+        {
+          "name": "Performance Tests",
+          "datasource": "prometheus", 
+          "expr": "performance_test_completed",
+          "textFormat": "Test: {{test_type}} - {{grade}}",
+          "iconColor": "green"
+        }
+      ]
+    }
+  }
+}
