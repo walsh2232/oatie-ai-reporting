@@ -1,0 +1,52 @@
+name: Pre-commit
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pre-commit:
+    name: Pre-commit Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install pre-commit
+      run: |
+        pip install pre-commit
+    
+    - name: Cache pre-commit hooks
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pre-commit
+        key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pre-commit-
+    
+    - name: Install pre-commit hooks
+      run: |
+        if [ -f .pre-commit-config.yaml ]; then
+          pre-commit install-hooks
+        fi
+    
+    - name: Run pre-commit on all files
+      run: |
+        if [ -f .pre-commit-config.yaml ]; then
+          pre-commit run --all-files
+        else
+          echo "No pre-commit configuration found"
+        fi

@@ -1,0 +1,140 @@
+name: Documentation Issue
+description: Report an issue with documentation or suggest documentation improvements
+title: "[Docs]: "
+labels: ["documentation", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping us improve our documentation! Please provide details about the documentation issue or improvement suggestion.
+
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Details
+      description: How can we get in touch with you if we need more info?
+      placeholder: ex. email@example.com
+    validations:
+      required: false
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation is this about?
+      options:
+        - API Documentation
+        - User Guide
+        - Developer Guide
+        - README
+        - Contributing Guidelines
+        - Code Comments
+        - Architecture Documentation
+        - Installation Instructions
+        - Troubleshooting Guide
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: doc-location
+    attributes:
+      label: Documentation Location
+      description: Where is the documentation located?
+      placeholder: e.g., README.md, docs/api.md, line 42 in src/main.py
+    validations:
+      required: false
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - Missing documentation
+        - Incorrect information
+        - Outdated information
+        - Unclear or confusing
+        - Typo or grammar error
+        - Broken link
+        - Missing example
+        - Improvement suggestion
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current Documentation State
+      description: What does the current documentation say (if anything)?
+      placeholder: Copy the current text or describe what's currently documented
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected-state
+    attributes:
+      label: Expected Documentation
+      description: What should the documentation say or include?
+      placeholder: Describe what you think should be documented or how it should be improved
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Why is this important?
+      description: Explain why this documentation change would be helpful
+      placeholder: This would help users understand...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Target Audience
+      description: Who would benefit from this documentation change?
+      options:
+        - End Users
+        - Developers
+        - Contributors
+        - DevOps/Infrastructure
+        - API Consumers
+        - All Users
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-content
+    attributes:
+      label: Suggested Content
+      description: If you have suggestions for the actual content, please provide them here
+      placeholder: |
+        You can provide:
+        - Specific text suggestions
+        - Code examples
+        - Links to resources
+        - Screenshots or diagrams
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the documentation issue here.
+      placeholder: Any additional information that might be helpful
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](../CODE_OF_CONDUCT.md)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
