@@ -176,3 +176,187 @@ class SecurityManager:
             return "MEDIUM"
         else:
             return "LOW"
+    
+    async def check_rate_limit(self, user_id: str, action: str, limit: int = 100, 
+                             window_minutes: int = 60) -> bool:
+        """Check if user has exceeded rate limit for specific action"""
+        # In production, use Redis for distributed rate limiting
+        current_time = datetime.utcnow()
+        window_start = current_time - timedelta(minutes=window_minutes)
+        
+        # Count recent actions for this user
+        recent_actions = [
+            log for log in self.audit_logs
+            if (log.get("user_id") == user_id and 
+                log.get("details", {}).get("action") == action and
+                datetime.fromisoformat(log["timestamp"]) > window_start)
+        ]
+        
+        if len(recent_actions) >= limit:
+            await self.log_audit_event(
+                AuditEventType.SECURITY_VIOLATION,
+                user_id=user_id,
+                details={"rate_limit_exceeded": True, "action": action, "limit": limit}
+            )
+            return False
+        
+        return True
+    
+    async def validate_sso_token(self, sso_provider: str, token: str) -> Optional[Dict[str, Any]]:
+        """Validate SSO token from external providers (SAML, OAuth)"""
+        # Mock SSO validation - replace with actual provider integration
+        try:
+            # Decode and validate SSO token based on provider
+            if sso_provider == "okta":
+                # Okta token validation logic
+                user_info = await self._validate_okta_token(token)
+            elif sso_provider == "azure_ad":
+                # Azure AD token validation logic
+                user_info = await self._validate_azure_token(token)
+            else:
+                logger.warning("Unsupported SSO provider", provider=sso_provider)
+                return None
+            
+            await self.log_audit_event(
+                AuditEventType.LOGIN,
+                user_id=user_info.get("user_id"),
+                details={"sso_provider": sso_provider, "sso_login": True}
+            )
+            
+            return user_info
+            
+        except Exception as e:
+            logger.error("SSO token validation failed", provider=sso_provider, error=str(e))
+            await self.log_audit_event(
+                AuditEventType.LOGIN_FAILED,
+                details={"sso_provider": sso_provider, "error": str(e)}
+            )
+            return None
+    
+    async def _validate_okta_token(self, token: str) -> Dict[str, Any]:
+        """Validate Okta SSO token"""
+        # Mock implementation - replace with actual Okta SDK
+        return {
+            "user_id": "okta_user_123",
+            "email": "user@company.com",
+            "name": "John Doe",
+            "roles": ["analyst"],
+            "sso_provider": "okta"
+        }
+    
+    async def _validate_azure_token(self, token: str) -> Dict[str, Any]:
+        """Validate Azure AD SSO token"""
+        # Mock implementation - replace with actual Azure AD validation
+        return {
+            "user_id": "azure_user_456",
+            "email": "user@company.com",
+            "name": "Jane Smith",
+            "roles": ["admin"],
+            "sso_provider": "azure_ad"
+        }
+    
+    async def get_audit_logs(self, user_id: Optional[str] = None, 
+                           event_type: Optional[AuditEventType] = None,
+                           start_date: Optional[datetime] = None,
+                           end_date: Optional[datetime] = None,
+                           limit: int = 100) -> List[Dict]:
+        """Retrieve audit logs with filtering options"""
+        filtered_logs = self.audit_logs.copy()
+        
+        # Apply filters
+        if user_id:
+            filtered_logs = [log for log in filtered_logs if log.get("user_id") == user_id]
+        
+        if event_type:
+            filtered_logs = [log for log in filtered_logs if log.get("event_type") == event_type.value]
+        
+        if start_date:
+            filtered_logs = [
+                log for log in filtered_logs 
+                if datetime.fromisoformat(log["timestamp"]) >= start_date
+            ]
+        
+        if end_date:
+            filtered_logs = [
+                log for log in filtered_logs 
+                if datetime.fromisoformat(log["timestamp"]) <= end_date
+            ]
+        
+        # Sort by timestamp (newest first) and limit
+        filtered_logs.sort(key=lambda x: x["timestamp"], reverse=True)
+        return filtered_logs[:limit]
+    
+    async def generate_security_report(self) -> Dict[str, Any]:
+        """Generate comprehensive security report"""
+        current_time = datetime.utcnow()
+        last_24h = current_time - timedelta(hours=24)
+        last_7d = current_time - timedelta(days=7)
+        
+        # Count events by type in last 24h
+        recent_events = [
+            log for log in self.audit_logs
+            if datetime.fromisoformat(log["timestamp"]) > last_24h
+        ]
+        
+        event_counts = {}
+        for event_type in AuditEventType:
+            event_counts[event_type.value] = len([
+                log for log in recent_events if log["event_type"] == event_type.value
+            ])
+        
+        # Security violations in last 7 days
+        violations = [
+            log for log in self.audit_logs
+            if (log["event_type"] == AuditEventType.SECURITY_VIOLATION.value and
+                datetime.fromisoformat(log["timestamp"]) > last_7d)
+        ]
+        
+        # Failed login attempts
+        failed_logins = [
+            log for log in recent_events
+            if log["event_type"] == AuditEventType.LOGIN_FAILED.value
+        ]
+        
+        return {
+            "report_generated_at": current_time.isoformat(),
+            "time_period": {
+                "last_24h_events": len(recent_events),
+                "last_7d_violations": len(violations)
+            },
+            "event_counts_24h": event_counts,
+            "security_summary": {
+                "total_violations_7d": len(violations),
+                "failed_logins_24h": len(failed_logins),
+                "unique_users_24h": len(set(log.get("user_id") for log in recent_events if log.get("user_id"))),
+                "high_severity_events_24h": len([
+                    log for log in recent_events if log.get("severity") == "HIGH"
+                ])
+            },
+            "recommendations": self._generate_security_recommendations(violations, failed_logins)
+        }
+    
+    def _generate_security_recommendations(self, violations: List[Dict], failed_logins: List[Dict]) -> List[str]:
+        """Generate security recommendations based on recent events"""
+        recommendations = []
+        
+        if len(failed_logins) > 10:
+            recommendations.append("High number of failed login attempts detected. Consider implementing account lockout policies.")
+        
+        if len(violations) > 5:
+            recommendations.append("Multiple security violations detected. Review access controls and user permissions.")
+        
+        # Check for suspicious patterns
+        user_violations = {}
+        for violation in violations:
+            user_id = violation.get("user_id")
+            if user_id:
+                user_violations[user_id] = user_violations.get(user_id, 0) + 1
+        
+        for user_id, count in user_violations.items():
+            if count > 3:
+                recommendations.append(f"User {user_id} has {count} security violations. Consider reviewing their access.")
+        
+        if not recommendations:
+            recommendations.append("Security posture appears normal. Continue monitoring.")
+        
+        return recommendations
