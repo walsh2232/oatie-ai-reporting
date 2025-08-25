@@ -1,0 +1,191 @@
+config:
+  target: 'http://localhost:8000'
+  phases:
+    # Ramp-up phase
+    - duration: 120
+      arrivalRate: 5
+      rampTo: 50
+      name: "Ramp up to 50 RPS"
+    
+    # Sustained load phase
+    - duration: 300
+      arrivalRate: 50
+      name: "Sustained load at 50 RPS"
+    
+    # Spike testing
+    - duration: 60
+      arrivalRate: 100
+      name: "Spike to 100 RPS"
+    
+    # Cool down
+    - duration: 60
+      arrivalRate: 10
+      name: "Cool down"
+  
+  # Load testing configuration
+  http:
+    timeout: 30
+    pool: 50
+  
+  # Variables for dynamic testing
+  variables:
+    regions:
+      - "North"
+      - "South"
+      - "East"
+      - "West"
+      - "Central"
+    
+    userTypes:
+      - "admin"
+      - "analyst"
+      - "viewer"
+      - "manager"
+
+  # Custom metrics and monitoring
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+    
+    # Publish metrics to external systems
+    publish-metrics:
+      - type: prometheus
+        target: "http://localhost:9091"
+        prefix: "artillery_"
+
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 1  # Max 1% error rate
+    maxResponseTime: 2000  # Max 2s response time for p95
+    minThoughput: 45  # Minimum 45 RPS
+
+# Authentication setup
+before:
+  flow:
+    - post:
+        url: "/api/v1/auth/login"
+        json:
+          username: "test_user"
+          password: "test_password"
+        capture:
+          - json: "$.access_token"
+            as: "authToken"
+
+scenarios:
+  # Core API load testing scenarios
+  - name: "Oracle BI API Load Test"
+    weight: 60
+    flow:
+      # Health check
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+      
+      # User authentication and profile
+      - get:
+          url: "/api/v1/users/profile"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "username"
+      
+      # Report listing with pagination
+      - get:
+          url: "/api/v1/reports?page=1&limit=20"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+      
+      # Template browsing
+      - get:
+          url: "/api/v1/templates?category=sales"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+  
+  # Query execution scenarios
+  - name: "Oracle BI Query Execution"
+    weight: 30
+    flow:
+      # Execute complex query
+      - post:
+          url: "/api/v1/queries/execute"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            sql: "SELECT region, SUM(sales_amount) FROM sales_data WHERE region = '{{ $randomValue(regions) }}' GROUP BY region"
+            parameters: {}
+            use_cache: true
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+      
+      # Query history
+      - get:
+          url: "/api/v1/queries/history?limit=10"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+      
+      # Performance metrics
+      - get:
+          url: "/api/v1/performance/metrics"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+  # GraphQL testing scenario
+  - name: "GraphQL Load Test"
+    weight: 10
+    flow:
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              query {
+                reports(limit: 5) {
+                  id
+                  name
+                  description
+                  execution_count
+                }
+                performanceMetrics {
+                  metric_name
+                  value
+                  unit
+                }
+              }
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+
+# Custom functions for realistic data generation
+processor:
+  generateReportData: |
+    function(requestParams, response, context, next) {
+      context.vars.reportId = 'report_' + Math.floor(Math.random() * 1000);
+      context.vars.timestamp = new Date().toISOString();
+      return next();
+    }
+  
+  validatePerformance: |
+    function(requestParams, response, context, next) {
+      if (response.statusCode === 200 && response.body) {
+        const responseTime = response.timings.response;
+        if (responseTime > 2000) {
+          console.log(`Slow response detected: ${responseTime}ms for ${requestParams.url}`);
+        }
+      }
+      return next();
+    }
