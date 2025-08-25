@@ -1,0 +1,44 @@
+{
+  "name": "oatie-ai-reporting",
+  "version": "1.0.0",
+  "description": "Oatie - Transform Your Fusion Reporting with AI - Oracle BI Publisher AI Assistant with Oracle Redwood Design System",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && pip install -r requirements.txt",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && python -m pytest",
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:backend": "cd backend && flake8 app/ && black --check app/ && mypy app/",
+    "docker:build": "docker-compose -f docker-compose.prod.yml build",
+    "docker:up": "docker-compose -f docker-compose.prod.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.prod.yml down",
+    "migrate": "cd backend && alembic upgrade head",
+    "health": "curl -f http://localhost:8000/health/live || exit 1"
+  },
+  "keywords": [
+    "oracle",
+    "bi-publisher",
+    "ai",
+    "reporting",
+    "redwood-design",
+    "fastapi",
+    "react",
+    "postgresql"
+  ],
+  "author": "Walsh2232",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

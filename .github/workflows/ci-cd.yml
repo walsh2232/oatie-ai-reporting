@@ -1,0 +1,321 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Code Quality and Security
+  lint-and-security:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [frontend, backend]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      if: matrix.component == 'frontend'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Setup Python
+      if: matrix.component == 'backend'
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: backend/requirements.txt
+
+    # Frontend linting
+    - name: Install frontend dependencies
+      if: matrix.component == 'frontend'
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Lint frontend
+      if: matrix.component == 'frontend'
+      run: |
+        cd frontend
+        npm run lint
+        npm run type-check
+
+    # Backend linting
+    - name: Install backend dependencies
+      if: matrix.component == 'backend'
+      run: |
+        cd backend
+        pip install -r requirements.txt
+
+    - name: Lint backend
+      if: matrix.component == 'backend'
+      run: |
+        cd backend
+        flake8 app/
+        black --check app/
+        mypy app/
+
+    # Security scanning with CodeQL
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.component == 'frontend' && 'typescript' || 'python' }}
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  # Testing
+  test:
+    runs-on: ubuntu-latest
+    needs: lint-and-security
+    strategy:
+      matrix:
+        component: [frontend, backend]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      if: matrix.component == 'frontend'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Setup Python
+      if: matrix.component == 'backend'
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: backend/requirements.txt
+
+    # Frontend tests
+    - name: Install and test frontend
+      if: matrix.component == 'frontend'
+      run: |
+        cd frontend
+        npm ci
+        npm test -- --coverage --watchAll=false
+        
+    - name: Upload frontend coverage
+      if: matrix.component == 'frontend'
+      uses: codecov/codecov-action@v3
+      with:
+        file: frontend/coverage/lcov.info
+        flags: frontend
+
+    # Backend tests
+    - name: Install and test backend
+      if: matrix.component == 'backend'
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        REDIS_URL: redis://localhost:6379
+        SECRET_KEY: test_secret_key
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        pytest --cov=app --cov-report=xml --cov-report=html
+
+    - name: Upload backend coverage
+      if: matrix.component == 'backend'
+      uses: codecov/codecov-action@v3
+      with:
+        file: backend/coverage.xml
+        flags: backend
+
+  # Docker build and container security scan
+  build-and-scan:
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      matrix:
+        component: [frontend, backend]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.${{ matrix.component }}
+        target: ${{ matrix.component }}-production
+        tags: ${{ matrix.component }}:latest
+        load: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    # Container security scanning with Trivy
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ matrix.component }}:latest'
+        format: 'sarif'
+        output: 'trivy-results-${{ matrix.component }}.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results-${{ matrix.component }}.sarif'
+
+  # Integration tests
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: build-and-scan
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Start services
+      run: |
+        cp .env.example .env
+        docker-compose -f docker-compose.prod.yml up -d --build
+        
+    - name: Wait for services
+      run: |
+        timeout 300 bash -c 'until curl -f http://localhost/health; do sleep 5; done'
+        timeout 300 bash -c 'until curl -f http://localhost:8000/health/live; do sleep 5; done'
+
+    - name: Run integration tests
+      run: |
+        # Test API endpoints
+        curl -f http://localhost:8000/health/detailed
+        curl -f http://localhost:8000/api/v1/reports/
+        
+        # Test frontend
+        curl -f http://localhost/
+        
+        # Test metrics endpoint
+        curl -f http://localhost:8000/metrics
+
+    - name: Collect logs
+      if: failure()
+      run: |
+        docker-compose -f docker-compose.prod.yml logs > docker-logs.txt
+        
+    - name: Upload logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: docker-logs
+        path: docker-logs.txt
+
+    - name: Stop services
+      if: always()
+      run: docker-compose -f docker-compose.prod.yml down -v
+
+  # Build and push production images
+  publish:
+    runs-on: ubuntu-latest
+    needs: integration-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        component: [frontend, backend]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.${{ matrix.component }}
+        target: ${{ matrix.component }}-production
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Deploy to staging (automatically on main branch)
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: publish
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    
+    steps:
+    - name: Deploy to staging
+      run: |
+        echo "🚀 Deploying to staging environment"
+        echo "This would trigger your staging deployment process"
+        # Add your staging deployment commands here

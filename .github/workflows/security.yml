@@ -1,0 +1,122 @@
+name: Security Scan
+
+on:
+  schedule:
+    # Run security scan daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '**/requirements.txt'
+      - '**/package*.json'
+      - 'Dockerfile*'
+
+jobs:
+  dependency-scan:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        component: [frontend, backend]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Frontend dependency scanning
+    - name: Setup Node.js
+      if: matrix.component == 'frontend'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install frontend dependencies
+      if: matrix.component == 'frontend'
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Run npm audit
+      if: matrix.component == 'frontend'
+      run: |
+        cd frontend
+        npm audit --audit-level high
+
+    # Backend dependency scanning
+    - name: Setup Python
+      if: matrix.component == 'backend'
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install backend dependencies
+      if: matrix.component == 'backend'
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        pip install safety
+
+    - name: Run safety check
+      if: matrix.component == 'backend'
+      run: |
+        cd backend
+        safety check
+
+  container-scan:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        component: [frontend, backend]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.${{ matrix.component }}
+        target: ${{ matrix.component }}-production
+        tags: ${{ matrix.component }}:security-scan
+        load: true
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ matrix.component }}:security-scan'
+        format: 'sarif'
+        output: 'trivy-results-${{ matrix.component }}.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results-${{ matrix.component }}.sarif'
+
+    - name: Run Trivy vulnerability scanner (table format)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ matrix.component }}:security-scan'
+        format: 'table'
+        exit-code: '1'
+        severity: 'CRITICAL,HIGH'
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run TruffleHog OSS
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        extra_args: --debug --only-verified
