@@ -3,7 +3,7 @@ Enterprise API v1 module with comprehensive endpoint organization
 """
 
 from fastapi import APIRouter
-from .endpoints import reports, queries, auth, users, admin, analytics
+from .endpoints import reports, queries, auth, users, admin, analytics, oracle
 
 api_router = APIRouter()
 
@@ -24,3 +24,6 @@ api_router.include_router(analytics.router, prefix="/analytics", tags=["analytic
 
 # Administrative endpoints
 api_router.include_router(admin.router, prefix="/admin", tags=["administration"])
+
+# Oracle BI Publisher integration endpoints
+api_router.include_router(oracle.router, prefix="/oracle", tags=["oracle-bi-publisher"])
