@@ -1,0 +1,83 @@
+{
+  "status": "success",
+  "message": "Oracle BI Publisher Mock API",
+  "version": "12.2.1.4",
+  "endpoints": {
+    "authentication": {
+      "login": "/xmlpserver/services/v2/session",
+      "logout": "/xmlpserver/services/v2/session"
+    },
+    "reports": {
+      "list": "/xmlpserver/services/v2/reports",
+      "execute": "/xmlpserver/services/v2/reports/{id}/run",
+      "status": "/xmlpserver/services/v2/reports/{id}/status",
+      "download": "/xmlpserver/services/v2/reports/{id}/download"
+    },
+    "catalog": {
+      "folders": "/xmlpserver/services/v2/catalog/folders",
+      "items": "/xmlpserver/services/v2/catalog/items"
+    },
+    "datasources": {
+      "list": "/xmlpserver/services/v2/datasources",
+      "test": "/xmlpserver/services/v2/datasources/{name}/test"
+    }
+  },
+  "mock_data": {
+    "reports": [
+      {
+        "id": "financial_summary",
+        "name": "Financial Summary Report",
+        "description": "Monthly financial summary",
+        "folder": "/Reports/Financial",
+        "format": "PDF",
+        "last_modified": "2024-01-15T10:30:00Z"
+      },
+      {
+        "id": "sales_analysis",
+        "name": "Sales Analysis Report",
+        "description": "Quarterly sales analysis",
+        "folder": "/Reports/Sales",
+        "format": "Excel",
+        "last_modified": "2024-01-14T15:45:00Z"
+      }
+    ],
+    "datasources": [
+      {
+        "name": "OracleDB_Production",
+        "type": "Oracle Database",
+        "host": "oracle-prod.company.com",
+        "port": 1521,
+        "service": "ORCL",
+        "status": "Active"
+      },
+      {
+        "name": "PostgreSQL_Analytics",
+        "type": "PostgreSQL",
+        "host": "postgres-analytics.company.com",
+        "port": 5432,
+        "database": "analytics",
+        "status": "Active"
+      }
+    ],
+    "folders": [
+      {
+        "path": "/",
+        "name": "Root",
+        "type": "folder",
+        "children": ["Reports", "Data Models", "Templates"]
+      },
+      {
+        "path": "/Reports",
+        "name": "Reports",
+        "type": "folder",
+        "children": ["Financial", "Sales", "Operations"]
+      },
+      {
+        "path": "/Reports/Financial",
+        "name": "Financial",
+        "type": "folder",
+        "children": ["financial_summary"]
+      }
+    ]
+  }
+}

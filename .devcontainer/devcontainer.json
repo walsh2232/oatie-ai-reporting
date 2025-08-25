@@ -1,0 +1,249 @@
+{
+  "name": "Oatie AI Oracle BI Publisher Enterprise Platform",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "workspace",
+  "workspaceFolder": "/workspace",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "nodeGypDependencies": true
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "enableNonRootDocker": "true"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "latest",
+      "helm": "latest",
+      "kubectl": "latest"
+    },
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "latest"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/start-services.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.flake8",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.pylint",
+        "ms-toolsai.jupyter",
+        "ms-python.debugpy",
+        
+
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml",
+        "humao.rest-client",
+        "42crunch.vscode-openapi",
+        "rangav.vscode-thunder-client",
+        
+
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-eslint",
+        "formulahendry.auto-rename-tag",
+        "christian-kohler.path-intellisense",
+        "ms-vscode.vscode-css-peek",
+        
+
+        "dsznajder.es7-react-js-snippets",
+        "ms-vscode.vscode-react-native",
+        "formulahendry.auto-close-tag",
+        "christian-kohler.npm-intellisense",
+        
+
+        "ms-mssql.mssql",
+        "oracle.oracledevtools",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "cweijan.vscode-postgresql-client2",
+        
+
+        "ms-azuretools.vscode-docker",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "hashicorp.terraform",
+        "redhat.vscode-helm",
+        "ms-vscode.vscode-prometheus",
+        
+
+        "eamodio.gitlens",
+        "github.vscode-pull-request-github",
+        "github.copilot",
+        "github.copilot-chat",
+        
+
+        "humao.rest-client",
+        "ms-vscode.vscode-json5",
+        "redhat.vscode-commons",
+        
+
+        "ms-playwright.playwright",
+        "hbenl.vscode-test-explorer",
+        "kavod-io.vscode-jest-test-adapter",
+        
+
+        "oracle.sql-developer",
+        "oracle.oracledevtools",
+        
+
+        "wayou.vscode-todo-highlight",
+        "gruntfuggly.todo-tree",
+        "alefragnani.bookmarks",
+        "ms-vscode.live-server",
+        "ritwickdey.liveserver",
+        
+
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint",
+        "shd101wyy.markdown-preview-enhanced"
+      ],
+      
+      "settings": {
+        "python.defaultInterpreterPath": "/workspace/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "python.formatting.provider": "black",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.autoTestDiscoverOnSaveEnabled": true,
+        
+        "typescript.preferences.quoteStyle": "single",
+        "typescript.updateImportsOnFileMove.enabled": "always",
+        "javascript.preferences.quoteStyle": "single",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true,
+          "source.fixAll.eslint": true
+        },
+        
+        "files.associations": {
+          "*.yml": "yaml",
+          "*.yaml": "yaml",
+          "Dockerfile*": "dockerfile",
+          ".env*": "properties"
+        },
+        
+        "git.autofetch": true,
+        "git.enableSmartCommit": true,
+        "git.confirmSync": false,
+        
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash",
+            "args": ["-l"]
+          }
+        },
+        
+        "workbench.colorTheme": "Dark+ (default dark)",
+        "workbench.iconTheme": "vs-seti",
+        "editor.minimap.enabled": true,
+        "editor.wordWrap": "on",
+        "editor.rulers": [80, 120],
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+      }
+    }
+  },
+
+
+  "forwardPorts": [
+    3000,
+    8000,
+    5432,
+    6379,
+    9090,
+    3001,
+    8080,
+    4000,
+    9502
+  ],
+  
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend Dev Server",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL Database",
+      "onAutoForward": "silent"
+    },
+    "6379": {
+      "label": "Redis Cache",
+      "onAutoForward": "silent"
+    },
+    "9090": {
+      "label": "Prometheus Metrics",
+      "onAutoForward": "ignore"
+    },
+    "3001": {
+      "label": "Grafana Dashboard",
+      "onAutoForward": "openPreview"
+    },
+    "9502": {
+      "label": "Oracle BI Publisher",
+      "onAutoForward": "ignore"
+    }
+  },
+
+
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    "source=oatie-venv,target=/workspace/.venv,type=volume",
+    "source=oatie-node-modules,target=/workspace/node_modules,type=volume",
+    "source=oatie-pip-cache,target=/root/.cache/pip,type=volume",
+    "source=oatie-npm-cache,target=/root/.npm,type=volume"
+  ],
+
+
+  "containerEnv": {
+    "PYTHONPATH": "/workspace",
+    "NODE_ENV": "development",
+    "ENVIRONMENT": "development",
+    "DEBUG": "true",
+    "DATABASE_URL": "postgresql+asyncpg://postgres:password@postgres:5432/oatie_ai",
+    "REDIS_URL": "redis://redis:6379/0",
+    "SECRET_KEY": "development-secret-key-not-for-production",
+    "ENCRYPTION_KEY": "development-encryption-key-32chars",
+    "CORS_ORIGINS": "http://localhost:3000,https://*.githubpreview.dev,https://*.app.github.dev",
+    "ALLOWED_HOSTS": "*",
+    "ORACLE_BI_URL": "http://localhost:9502/xmlpserver",
+    "ORACLE_BI_USERNAME": "weblogic",
+    "ORACLE_BI_PASSWORD": "password",
+    "LOG_LEVEL": "DEBUG"
+  },
+
+
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+
+
+  "initializeCommand": "echo 'Initializing Oatie AI Enterprise Development Environment...'",
+  "onCreateCommand": "echo 'Creating comprehensive development environment for Oracle BI Publisher integration...'",
+  "updateContentCommand": "echo 'Updating development dependencies...'",
+  "postAttachCommand": "echo 'Welcome to Oatie AI Enterprise Development Environment! 🚀'"
+}
