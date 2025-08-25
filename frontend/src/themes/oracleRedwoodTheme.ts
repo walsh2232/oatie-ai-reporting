@@ -1,53 +1,53 @@
 import { createTheme, Theme } from '@mui/material/styles';
 import { alpha } from '@mui/material/styles';
 
-// Oracle OCI Color System (from OCI Designer Toolkit research)
-const oracleOCIColors = {
-  // OCI Console Colors (from Designer Toolkit research)
-  console: {
-    background: '#ffffff',        // White background from OCI research
-    panelBackground: '#ffffff',
-    tabBackground: '#ffffff',
-    activeTab: '#d1d1d4',
-    text: '#000000',
-    border: '#312D2A',
-    borderAlt: '#161513',
+// Oracle JET Design System Color Palette
+const oracleColors = {
+  // Oracle Brand Colors
+  primary: {
+    50: '#fdf7f0',
+    100: '#faebd7',
+    200: '#f5d5ae',
+    300: '#efb883',
+    400: '#e89356',
+    500: '#e27938',
+    600: '#d4622a',
+    700: '#b04e23',
+    800: '#8e4024',
+    900: '#713a22',
+    main: '#e27938',
+    dark: '#b04e23',
+    light: '#efb883',
   },
   
-  // OCI Resource Category Colors
-  infrastructure: '#FF6B35',     // Orange-red for infrastructure
-  database: '#4A90E2',           // Blue for database
-  storage: '#7ED321',            // Green for storage
-  networking: '#9013FE',         // Purple for networking
-  gateways: '#FF9500',           // Orange for gateways
-  identity: '#F5A623',           // Yellow for identity/security
-  analytics: '#BD10E0',          // Magenta for analytics
-  
-  // Oracle Brand Colors (from JET research)
-  brand: {
-    primary: '113, 94, 52',      // Oracle brand brown
-    secondary: '137, 114, 63',   // Oracle secondary brown
-    light: '199, 165, 93',       // Oracle light brown
-    dark: '91, 74, 41',          // Oracle dark brown
-  },
-  
-  // Oracle Semantic Colors
-  success: '25, 135, 84',
-  danger: '220, 53, 69',
-  warning: '255, 183, 0',
-  info: '31, 120, 255',
-  
-  // Oracle Neutral System
+  // Oracle Neutral Palette
   neutral: {
-    white: '#ffffff',
-    gray10: '#f8f9fa',
-    gray20: '#e9ecef',
-    gray30: '#dee2e6',
-    gray40: '#ced4da',
-    gray50: '#adb5bd',
-    gray60: '#6c757d',
-    gray70: '#495057',
-    gray80: '#343a40',
+    50: '#fafafa',
+    100: '#f5f5f5',
+    200: '#eeeeee',
+    300: '#e0e0e0',
+    400: '#bdbdbd',
+    500: '#9e9e9e',
+    600: '#757575',
+    700: '#616161',
+    800: '#424242',
+    900: '#212121',
+  },
+
+  // Oracle Semantic Colors
+  success: {
+    50: '#e8f5e8',
+    100: '#c8e6c9',
+    200: '#a5d6a7',
+    300: '#81c784',
+    400: '#66bb6a',
+    500: '#4caf50',
+    600: '#43a047',
+    700: '#388e3c',
+    800: '#2e7d32',
+    900: '#1b5e20',
+    main: '#4caf50',
+  },
     gray90: '#212529',
     black: '#000000',
   }
