@@ -95,10 +95,28 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     # Oracle BI Publisher Integration
-    oracle_bi_url: Optional[str] = None
+    oracle_bi_enabled: bool = False
+    oracle_bi_urls: List[str] = Field(default=[], description="List of Oracle BI Publisher server URLs for load balancing")
     oracle_bi_username: Optional[str] = None
     oracle_bi_password: Optional[str] = None
     oracle_bi_timeout: int = 30
+    oracle_bi_pool_size: int = 50
+    oracle_bi_max_connections: int = 100
+    oracle_bi_cache_ttl: int = 300  # 5 minutes
+    oracle_bi_enable_audit: bool = True
+    
+    # Oracle Identity Cloud Service (IDCS) Integration
+    oracle_idcs_enabled: bool = False
+    oracle_idcs_tenant: Optional[str] = None
+    oracle_idcs_client_id: Optional[str] = None
+    oracle_idcs_client_secret: Optional[str] = None
+    oracle_idcs_scope: str = "urn:opc:idm:__myscopes__"
+    
+    # Oracle SSO Configuration
+    oracle_sso_enabled: bool = False
+    oracle_saml_metadata_url: Optional[str] = None
+    oracle_saml_entity_id: Optional[str] = None
+    oracle_oidc_discovery_url: Optional[str] = None
     
     # Performance Optimization
     async_workers: int = 4

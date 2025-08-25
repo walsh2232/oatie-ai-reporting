@@ -70,6 +70,40 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     security_manager = SecurityManager(settings)
     app.state.security_manager = security_manager
     
+    # Initialize Oracle BI Publisher SDK if enabled
+    oracle_sdk = None
+    if settings.oracle_bi_enabled and settings.oracle_bi_urls:
+        try:
+            from backend.integrations.oracle import OracleBIPublisherSDK
+            
+            oracle_sdk = OracleBIPublisherSDK(
+                server_urls=settings.oracle_bi_urls,
+                username=settings.oracle_bi_username or "",
+                password=settings.oracle_bi_password or "",
+                encryption_key=settings.encryption_key,
+                pool_size=settings.oracle_bi_pool_size,
+                timeout=settings.oracle_bi_timeout,
+                enable_caching=True,
+                cache_ttl=settings.oracle_bi_cache_ttl,
+                enable_audit=settings.oracle_bi_enable_audit
+            )
+            
+            await oracle_sdk.initialize()
+            app.state.oracle_sdk = oracle_sdk
+            
+            logger.info(
+                "Oracle BI Publisher SDK initialized",
+                servers=len(settings.oracle_bi_urls),
+                pool_size=settings.oracle_bi_pool_size
+            )
+            
+        except Exception as e:
+            logger.error("Failed to initialize Oracle BI Publisher SDK", error=str(e))
+            app.state.oracle_sdk = None
+    else:
+        app.state.oracle_sdk = None
+        logger.info("Oracle BI Publisher integration disabled")
+    
     # Setup monitoring
     setup_monitoring()
     
@@ -79,6 +113,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     
     # Cleanup
     logger.info("Shutting down platform...")
+    
+    # Shutdown Oracle SDK
+    if oracle_sdk:
+        await oracle_sdk.shutdown()
+    
     await cache_manager.close()
     await db_manager.close()
     logger.info("Platform shutdown complete")
