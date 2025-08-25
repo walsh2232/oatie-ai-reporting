@@ -66,7 +66,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userName = 'Oracle User', onLogou
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [dashboardData, setDashboardData] = useState(generateMockData());
   const [loading, setLoading] = useState(true);
-  const [processingStatus, setProcessingStatus] = useState<any>(null);
+  const [processingStatus, setProcessingStatus] = useState<{ queueSize: number; activeJobs: number; completedJobs: number } | null>(null);
 
   useEffect(() => {
     // Simulate loading Oracle BI data with parallel processing
@@ -109,7 +109,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userName = 'Oracle User', onLogou
     }, 5000);
 
     return () => clearInterval(statusInterval);
-  }, []);
+  }, []); // Dashboard data dependencies are handled internally
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
