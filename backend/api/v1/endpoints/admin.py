@@ -110,9 +110,14 @@ async def get_audit_logs(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid event type")
     
-    logs = await security_manager.get_audit_logs(
-        event_type=event_type_filter
-    )
+    # Fallback if get_audit_logs is not implemented
+    if not hasattr(security_manager, "get_audit_logs"):
+        # Return empty list or raise a clear error
+        logs = []
+    else:
+        logs = await security_manager.get_audit_logs(
+            event_type=event_type_filter
+        )
     
     # Apply limit
     limited_logs = logs[-limit:] if logs else []
