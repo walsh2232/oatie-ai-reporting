@@ -1,15 +1,37 @@
 name: Performance Testing & Quality Assurance
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-  schedule:
-    # Run performance tests daily at 2 AM UTC
-    - cron: '0 2 * * *'
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      test_type:
+        required: false
+        type: string
+        default: 'load'
+      target_url:
+        required: true
+        type: string
+      duration:
+        required: false
+        type: string
+        default: '10m'
+      users:
+        required: false
+        type: number
+        default: 100
+
   workflow_dispatch:
     inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
       test_type:
         description: 'Type of performance test to run'
         required: true
@@ -18,7 +40,25 @@ on:
         options:
           - load
           - stress
+          - spike
+          - endurance
+          - baseline
           - full_suite
+      target_url:
+        description: 'Target URL for testing'
+        required: true
+        default: 'https://staging.oatie.company.com'
+        type: string
+      duration:
+        description: 'Test duration'
+        required: false
+        default: '10m'
+        type: string
+      users:
+        description: 'Number of concurrent users'
+        required: false
+        default: 100
+        type: number
       concurrent_users:
         description: 'Number of concurrent users for load testing'
         required: false
@@ -28,15 +68,133 @@ on:
         required: false
         default: '10'
 
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run performance tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+
 env:
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.12'
+  PERFORMANCE_RESULTS_DIR: performance-results
   
 jobs:
+  # Performance test configuration
+  setup-performance-test:
+    name: Setup Performance Test
+    runs-on: ubuntu-latest
+    outputs:
+      test-config: ${{ steps.config.outputs.config }}
+      test-scenarios: ${{ steps.scenarios.outputs.scenarios }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure test parameters
+        id: config
+        run: |
+          case "${{ inputs.test_type }}" in
+            "load")
+              USERS=${{ inputs.users || inputs.concurrent_users }}
+              DURATION="${{ inputs.duration || inputs.duration_minutes }}m"
+              RAMP_UP="2m"
+              ;;
+            "stress")
+              USERS=$((${{ inputs.users || inputs.concurrent_users }} * 2))
+              DURATION="${{ inputs.duration || inputs.duration_minutes }}m"
+              RAMP_UP="5m"
+              ;;
+            "spike")
+              USERS=$((${{ inputs.users || inputs.concurrent_users }} * 3))
+              DURATION="1m"
+              RAMP_UP="30s"
+              ;;
+            "endurance")
+              USERS=${{ inputs.users || inputs.concurrent_users }}
+              DURATION="30m"
+              RAMP_UP="5m"
+              ;;
+            "baseline")
+              USERS="10"
+              DURATION="5m"
+              RAMP_UP="1m"
+              ;;
+            "full_suite")
+              USERS=${{ inputs.users || inputs.concurrent_users }}
+              DURATION="${{ inputs.duration || inputs.duration_minutes }}m"
+              RAMP_UP="2m"
+              ;;
+          esac
+          
+          CONFIG=$(cat <<EOF
+          {
+            "users": $USERS,
+            "duration": "$DURATION",
+            "rampUp": "$RAMP_UP",
+            "targetUrl": "${{ inputs.target_url || 'https://staging.oatie.company.com' }}",
+            "environment": "${{ inputs.environment || 'staging' }}",
+            "testType": "${{ inputs.test_type }}"
+          }
+          EOF
+          )
+          
+          echo "config=$CONFIG" >> $GITHUB_OUTPUT
+
+      - name: Define test scenarios
+        id: scenarios
+        run: |
+          SCENARIOS=$(cat <<'EOF'
+          [
+            {
+              "name": "homepage",
+              "path": "/",
+              "method": "GET",
+              "weight": 30
+            },
+            {
+              "name": "dashboard",
+              "path": "/dashboard",
+              "method": "GET",
+              "weight": 25
+            },
+            {
+              "name": "reports",
+              "path": "/api/reports",
+              "method": "GET",
+              "weight": 20
+            },
+            {
+              "name": "health",
+              "path": "/health",
+              "method": "GET",
+              "weight": 10
+            },
+            {
+              "name": "login",
+              "path": "/api/auth/login",
+              "method": "POST",
+              "weight": 10
+            },
+            {
+              "name": "analytics",
+              "path": "/api/analytics",
+              "method": "GET",
+              "weight": 5
+            }
+          ]
+          EOF
+          )
+          
+          echo "scenarios=$SCENARIOS" >> $GITHUB_OUTPUT
+
   performance-test:
     name: Performance Load Testing
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    needs: [setup-performance-test]
     
     strategy:
       matrix:

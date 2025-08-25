@@ -25,7 +25,7 @@ authlib==1.2.1
 # API & GraphQL
 graphene==3.3.0
 strawberry-graphql==0.216.1
-webhooks==0.6.0
+webhooks==0.4.2
 
 # Analytics & ML
 numpy==1.24.3
