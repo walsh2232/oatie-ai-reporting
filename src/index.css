@@ -1,0 +1,121 @@
+/* Oracle Redwood Design System Global Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Use Inter as fallback for Oracle Sans */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #fafafa;
+  line-height: 1.6;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Oracle Redwood color variables */
+:root {
+  --oracle-red-600: #da2b2b;
+  --oracle-blue-600: #2563eb;
+  --oracle-neutral-50: #fafafa;
+  --oracle-neutral-100: #f5f5f5;
+  --oracle-neutral-200: #e5e5e5;
+  --oracle-neutral-900: #171717;
+  --oracle-success-500: #22c55e;
+  --oracle-warning-500: #f59e0b;
+  --oracle-error-500: #ef4444;
+}
+
+/* Oracle focus styles */
+.MuiButton-root:focus-visible,
+.MuiTextField-root .MuiOutlinedInput-root:focus-within,
+.MuiIconButton-root:focus-visible {
+  outline: 2px solid var(--oracle-blue-600);
+  outline-offset: 2px;
+}
+
+/* Oracle elevation styles */
+.oracle-elevation-1 {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.oracle-elevation-2 {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+.oracle-elevation-3 {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.14);
+}
+
+/* Oracle transitions */
+.oracle-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Scrollbar styling for Oracle theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--oracle-neutral-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--oracle-neutral-200);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--oracle-neutral-900);
+}
+
+/* Oracle loading animation */
+@keyframes oracle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.oracle-loading {
+  animation: oracle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Oracle grid system helper classes */
+.oracle-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 768px) {
+  .oracle-container {
+    padding: 0 16px;
+  }
+}
+
+/* Oracle responsive typography */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
