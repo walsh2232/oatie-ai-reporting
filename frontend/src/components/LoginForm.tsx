@@ -20,7 +20,6 @@ import { LockOutlined, Visibility, VisibilityOff, Business } from '@mui/icons-ma
 import { IconButton, InputAdornment } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginCredentials } from '../types/auth';
-import { oracleOCIColors, oracleOCILayout, oracleTypography } from '../themes/oracleRedwoodTheme';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -71,30 +70,31 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: oracleOCIColors.console.background,
-          padding: oracleOCILayout.spacing / 8, // Convert to Material-UI spacing units
+          backgroundColor: 'background.default',
+          padding: 2,
         }}
       >
         <Paper
           elevation={3}
           sx={{
-            padding: oracleOCILayout.spacing / 8 * 4, // Use Oracle spacing system
+            padding: 4,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            borderRadius: oracleOCILayout.borderRadius * 2,
+            borderRadius: 2,
             width: '100%',
-            maxWidth: oracleOCILayout.containerWidth * 2, // Use Oracle container width
-            backgroundColor: oracleOCIColors.console.panelBackground,
-            border: `1px solid ${oracleOCIColors.neutral.gray30}`,
+            maxWidth: 400,
+            backgroundColor: 'background.paper',
+            border: '1px solid',
+            borderColor: 'divider',
           }}
         >
           <Avatar 
             sx={{ 
               m: 1, 
-              bgcolor: `rgb(${oracleOCIColors.brand.primary})`,
-              width: oracleOCILayout.iconSize + 16, 
-              height: oracleOCILayout.iconSize + 16,
+              bgcolor: 'primary.main',
+              width: 56, 
+              height: 56,
             }}
           >
             <LockOutlined fontSize="large" />
