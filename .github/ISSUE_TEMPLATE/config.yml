@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/walsh2232/oatie-ai-reporting/blob/main/README.md
+    about: Check out our documentation for setup and usage instructions
+  - name: 💬 Discussions
+    url: https://github.com/walsh2232/oatie-ai-reporting/discussions
+    about: Ask questions, share ideas, and discuss with the community
+  - name: 🔒 Security Issues
+    url: https://github.com/walsh2232/oatie-ai-reporting/security/advisories/new
+    about: Report security vulnerabilities privately
