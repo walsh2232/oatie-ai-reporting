@@ -1,10 +1,5 @@
-/**
- * Oracle Redwood Design System Theme
- * Enhanced with Oracle OCI Designer Toolkit patterns
- * Based on Oracle JET design tokens and OCI specific implementations
- */
-
-import { createTheme, ThemeOptions } from '@mui/material/styles';
+import { createTheme, Theme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
 
 // Oracle OCI Color System (from OCI Designer Toolkit research)
 const oracleOCIColors = {
