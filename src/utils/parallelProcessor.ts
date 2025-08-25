@@ -210,7 +210,6 @@ export class OracleParallelProcessor {
       operation,
     };
   }
-  }
 
   /**
    * Handle task errors with retry logic
