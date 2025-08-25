@@ -183,7 +183,4 @@ exclude_lines = [
 
 [tool.bandit]
 exclude_dirs = ["tests", "venv", ".venv"]
-skips = ["B101", "B601"]
-
-[tool.bandit.assert_used]
-skips = ["**/test_*.py", "**/tests/*.py"]
+skips = ["B101", "B601", "**/test_*.py", "**/tests/*.py"]
