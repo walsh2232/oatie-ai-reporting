@@ -33,22 +33,37 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     rememberMe: false
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!credentials.username) {
+      errors.username = 'Username is required';
+    } else if (!/\S+@\S+\.\S+/.test(credentials.username)) {
+      errors.username = 'Please enter a valid email address';
+    }
+    
+    if (!credentials.password) {
+      errors.password = 'Password is required';
+    } else if (credentials.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalError(null);
-
-    if (!credentials.username || !credentials.password) {
-      setLocalError('Please enter both username and password');
-      return;
-    }
-
+    
+    if (!validateForm()) return;
+    
     try {
       await login(credentials);
       onSuccess?.();
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Login failed');
+      console.error('Login failed:', err);
     }
   };
 
@@ -99,36 +114,35 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
           >
             <LockOutlined fontSize="large" />
           </Avatar>
-          
+
           <Typography 
             component="h1" 
             variant="h4" 
             sx={{ 
-              mb: 1, 
-              fontWeight: oracleTypography.weights.bold, 
-              color: `rgb(${oracleOCIColors.brand.primary})`,
-              fontFamily: oracleTypography.fontFamily,
-            }}
-          >
-            Oatie
-          </Typography>
-          
-          <Typography 
-            component="h2" 
-            variant="h6" 
-            sx={{ 
-              mb: 3, 
-              color: oracleOCIColors.neutral.gray70, 
+              mb: 1,
+              fontWeight: 600,
+              color: 'primary.main',
               textAlign: 'center',
-              fontFamily: oracleTypography.fontFamily,
             }}
           >
-            Oracle BI Publisher AI Assistant
+            Welcome to Oatie
           </Typography>
 
-          {(error || localError) && (
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              mb: 3,
+              color: 'text.secondary',
+              textAlign: 'center',
+              maxWidth: 320,
+            }}
+          >
+            Transform your Oracle BI Publisher reporting with AI-powered SQL generation
+          </Typography>
+
+          {error && (
             <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
-              {error || localError}
+              {error}
             </Alert>
           )}
 
@@ -138,16 +152,27 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               required
               fullWidth
               id="username"
-              label="Username"
+              label="Email Address"
               name="username"
-              autoComplete="username"
+              autoComplete="email"
               autoFocus
               value={credentials.username}
               onChange={handleInputChange('username')}
-              disabled={isLoading}
-              sx={{ mb: 2 }}
+              error={!!validationErrors.username}
+              helperText={validationErrors.username}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.paper',
+                  '&:hover': {
+                    borderColor: 'primary.light',
+                  },
+                  '&.Mui-focused': {
+                    borderColor: 'primary.main',
+                  },
+                },
+              }}
             />
-            
+
             <TextField
               margin="normal"
               required
@@ -159,22 +184,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               autoComplete="current-password"
               value={credentials.password}
               onChange={handleInputChange('password')}
-              disabled={isLoading}
-              sx={{ 
-                mb: 2,
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: oracleOCIColors.console.background,
-                  '& fieldset': {
-                    borderColor: oracleOCIColors.neutral.gray40,
-                  },
-                  '&:hover fieldset': {
-                    borderColor: `rgb(${oracleOCIColors.brand.primary})`,
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: `rgb(${oracleOCIColors.brand.primary})`,
-                  },
-                },
-              }}
+              error={!!validationErrors.password}
+              helperText={validationErrors.password}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -182,61 +193,52 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                       aria-label="toggle password visibility"
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
-                      sx={{ color: `rgb(${oracleOCIColors.brand.primary})` }}
+                      sx={{ color: 'primary.main' }}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
                 ),
               }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: 'background.paper',
+                  '&:hover': {
+                    borderColor: 'primary.light',
+                  },
+                  '&.Mui-focused': {
+                    borderColor: 'primary.main',
+                  },
+                },
+              }}
             />
 
             <FormControlLabel
               control={
-                <Checkbox
+                <Checkbox 
                   checked={credentials.rememberMe}
                   onChange={handleInputChange('rememberMe')}
-                  disabled={isLoading}
-                  sx={{ 
-                    color: `rgb(${oracleOCIColors.brand.primary})`,
-                    '&.Mui-checked': {
-                      color: `rgb(${oracleOCIColors.brand.primary})`,
-                    },
-                  }}
+                  color="primary"
                 />
               }
               label="Remember me"
-              sx={{ 
-                mb: 2,
-                color: oracleOCIColors.neutral.gray70,
-                fontFamily: oracleTypography.fontFamily,
-              }}
+              sx={{ mt: 1, mb: 2 }}
             />
 
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ 
-                mt: 2, 
-                mb: 2, 
-                py: 1.5,
-                fontSize: oracleTypography.sizes.base,
-                fontWeight: oracleTypography.weights.medium,
-                fontFamily: oracleTypography.fontFamily,
-                backgroundColor: `rgb(${oracleOCIColors.brand.primary})`,
-                minHeight: oracleOCILayout.iconSize,
-                borderRadius: oracleOCILayout.borderRadius,
-                textTransform: 'none',
-                '&:hover': {
-                  backgroundColor: `rgb(${oracleOCIColors.brand.dark})`,
-                },
-                '&:disabled': {
-                  backgroundColor: oracleOCIColors.neutral.gray50,
-                },
-              }}
-              }}
               disabled={isLoading}
+              sx={{
+                mt: 3,
+                mb: 2,
+                height: 48,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontSize: '1rem',
+                fontWeight: 600,
+              }}
             >
               {isLoading ? (
                 <CircularProgress size={24} color="inherit" />
@@ -245,17 +247,34 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               )}
             </Button>
 
-            <Box sx={{ textAlign: 'center', mt: 2 }}>
+            <Divider sx={{ my: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                Demo Credentials: admin / admin
+                OR
+              </Typography>
+            </Divider>
+
+            <Box sx={{ textAlign: 'center' }}>
+              <Link href="#" variant="body2" color="primary">
+                Forgot your password?
+              </Link>
+            </Box>
+
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Don't have an account?{' '}
+                <Link href="#" color="primary">
+                  Contact your administrator
+                </Link>
               </Typography>
             </Box>
           </Box>
         </Paper>
 
-        <Typography variant="body2" color="rgba(255,255,255,0.8)" sx={{ mt: 3, textAlign: 'center' }}>
-          Transform your Oracle BI Publisher reporting with AI-powered SQL generation
-        </Typography>
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Typography variant="caption" color="text.secondary">
+            Powered by AI • Oracle BI Publisher Integration
+          </Typography>
+        </Box>
       </Box>
     </Container>
   );

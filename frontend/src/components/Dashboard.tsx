@@ -6,7 +6,6 @@ import {
   Button,
   Box,
   Container,
-  Grid,
   Card,
   CardContent,
   CardActions,
@@ -20,7 +19,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Divider
+  Divider,
+  Stack
 } from '@mui/material';
 import {
   AccountCircle,
@@ -35,7 +35,7 @@ import {
   Speed
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { OracleConnectionDialog } from './OracleConnectionDialog';
+import { OracleConnectionDialog } from './OracleConnectionDialogSimple';
 import { QueryInterface } from './QueryInterface';
 
 export const Dashboard: React.FC = () => {
@@ -200,9 +200,9 @@ export const Dashboard: React.FC = () => {
               </Button>
             </Box>
 
-            <Grid container spacing={3}>
+            <Stack spacing={3} direction="row" flexWrap="wrap" useFlexGap>
               {user?.oracleConnections?.map((connection) => (
-                <Grid item xs={12} md={6} lg={4} key={connection.id}>
+                <Box key={connection.id} sx={{ minWidth: '300px', flex: '1 1 300px', maxWidth: '400px' }}>
                   <Card 
                     sx={{ 
                       height: '100%',
@@ -259,11 +259,11 @@ export const Dashboard: React.FC = () => {
                       </Button>
                     </CardActions>
                   </Card>
-                </Grid>
+                </Box>
               ))}
 
               {(!user?.oracleConnections || user.oracleConnections.length === 0) && (
-                <Grid item xs={12}>
+                <Box sx={{ width: '100%' }}>
                   <Card sx={{ textAlign: 'center', py: 6, borderRadius: 3 }}>
                     <CardContent>
                       <Storage sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
@@ -284,9 +284,9 @@ export const Dashboard: React.FC = () => {
                       </Button>
                     </CardContent>
                   </Card>
-                </Grid>
+                </Box>
               )}
-            </Grid>
+            </Stack>
           </Box>
         )}
 
@@ -295,8 +295,8 @@ export const Dashboard: React.FC = () => {
             <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold', color: '#333' }}>
               Query Analytics
             </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
+            <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>
+              <Box sx={{ minWidth: '250px', flex: '1 1 250px' }}>
                 <Card sx={{ borderRadius: 3, textAlign: 'center', p: 3 }}>
                   <Speed sx={{ fontSize: 48, color: '#667eea', mb: 2 }} />
                   <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#333' }}>
@@ -306,8 +306,8 @@ export const Dashboard: React.FC = () => {
                     Queries Generated
                   </Typography>
                 </Card>
-              </Grid>
-              <Grid item xs={12} md={4}>
+              </Box>
+              <Box sx={{ minWidth: '250px', flex: '1 1 250px' }}>
                 <Card sx={{ borderRadius: 3, textAlign: 'center', p: 3 }}>
                   <CheckCircle sx={{ fontSize: 48, color: '#4caf50', mb: 2 }} />
                   <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#333' }}>
@@ -317,8 +317,8 @@ export const Dashboard: React.FC = () => {
                     Success Rate
                   </Typography>
                 </Card>
-              </Grid>
-              <Grid item xs={12} md={4}>
+              </Box>
+              <Box sx={{ minWidth: '250px', flex: '1 1 250px' }}>
                 <Card sx={{ borderRadius: 3, textAlign: 'center', p: 3 }}>
                   <Analytics sx={{ fontSize: 48, color: '#ff9800', mb: 2 }} />
                   <Typography variant="h3" sx={{ fontWeight: 'bold', color: '#333' }}>
@@ -328,8 +328,8 @@ export const Dashboard: React.FC = () => {
                     Avg Response Time
                   </Typography>
                 </Card>
-              </Grid>
-            </Grid>
+              </Box>
+            </Stack>
           </Box>
         )}
       </Container>

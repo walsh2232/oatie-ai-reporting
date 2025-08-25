@@ -6,7 +6,6 @@ import {
   TextField,
   Button,
   Typography,
-  Grid,
   Paper,
   Alert,
   Chip,
@@ -18,7 +17,8 @@ import {
   ListItemText,
   IconButton,
   Tooltip,
-  CircularProgress
+  CircularProgress,
+  Stack
 } from '@mui/material';
 import {
   Send,
@@ -28,7 +28,7 @@ import {
   Download,
   ExpandMore,
   CheckCircle,
-  Error,
+  Error as ErrorIcon,
   Code,
   Psychology
 } from '@mui/icons-material';
@@ -118,7 +118,7 @@ export const QueryInterface: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error('HTTP ' + response.status + ': ' + response.statusText);
       }
 
       const data = await response.json();
@@ -196,9 +196,9 @@ export const QueryInterface: React.FC = () => {
 
   return (
     <Box>
-      <Grid container spacing={3}>
+      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} alignItems="flex-start">
         {/* Main Query Interface */}
-        <Grid item xs={12} lg={8}>
+        <Box sx={{ flex: '1 1 60%', minWidth: '300px' }}>
           <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -286,7 +286,7 @@ export const QueryInterface: React.FC = () => {
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Chip
-                        icon={sqlResult.valid ? <CheckCircle /> : <Error />}
+                        icon={sqlResult.valid ? <CheckCircle /> : <ErrorIcon />}
                         label={sqlResult.valid ? 'Valid' : 'Invalid'}
                         color={sqlResult.valid ? 'success' : 'error'}
                         size="small"
@@ -329,10 +329,10 @@ export const QueryInterface: React.FC = () => {
               )}
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
         {/* Query History Sidebar */}
-        <Grid item xs={12} lg={4}>
+        <Box sx={{ flex: '1 1 40%', minWidth: '300px' }}>
           <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -385,8 +385,8 @@ export const QueryInterface: React.FC = () => {
               )}
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
     </Box>
   );
 };
