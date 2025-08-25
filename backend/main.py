@@ -22,6 +22,11 @@ from backend.core.security import SecurityManager
 from backend.api.v1 import api_router
 from backend.api.graphql import graphql_app
 from backend.core.monitoring import setup_monitoring
+from backend.api.health import router as health_router
+from backend.api.performance import router as performance_router
+from backend.core.environment import initialize_environment
+from backend.core.error_recovery import setup_error_recovery
+from backend.core.performance import resource_monitor
 
 # Configure structured logging
 structlog.configure(
@@ -107,12 +112,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Setup monitoring
     setup_monitoring()
     
+    # Initialize environment configuration
+    initialize_environment()
+    
+    # Setup error recovery system
+    setup_error_recovery()
+    
+    # Start resource monitoring
+    resource_monitor.start_monitoring()
+    
     logger.info("Platform initialization complete")
     
     yield
     
     # Cleanup
     logger.info("Shutting down platform...")
+    
+    # Stop resource monitoring
+    resource_monitor.stop_monitoring()
     
     # Shutdown Oracle SDK
     if oracle_sdk:
@@ -176,6 +193,8 @@ def create_application() -> FastAPI:
     
     # Include API routes
     app.include_router(api_router, prefix="/api/v1")
+    app.include_router(health_router)  # Health monitoring endpoints
+    app.include_router(performance_router, prefix="/api")  # Performance monitoring endpoints
     
     # Mount GraphQL endpoint
     app.mount("/graphql", graphql_app)
