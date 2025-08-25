@@ -48,7 +48,7 @@ function App() {
     setConnectionDialogOpen(false);
   };
 
-  const handleConnect = async (connectionData: any) => {
+  const handleConnect = async (connectionData: { host: string; port: number; serviceName: string; username: string; password: string }) => {
     // Simulate Oracle connection establishment
     console.log('Connecting to Oracle:', connectionData);
     await new Promise(resolve => setTimeout(resolve, 2000));

@@ -3,7 +3,7 @@
  * Implements background agent automation and batch processing for Oracle components
  */
 
-export interface TaskResult<T = any> {
+export interface TaskResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -14,7 +14,7 @@ export interface TaskResult<T = any> {
 export interface ProcessingTask {
   id: string;
   type: 'query' | 'component-update' | 'validation' | 'batch-process';
-  payload: any;
+  payload: unknown;
   priority: 'low' | 'medium' | 'high';
   retries: number;
   maxRetries: number;
@@ -93,7 +93,7 @@ export class OracleParallelProcessor {
    */
   private async executeTask(task: ProcessingTask): Promise<TaskResult> {
     try {
-      let result: any;
+      let result: unknown;
 
       switch (task.type) {
         case 'query':
@@ -131,16 +131,17 @@ export class OracleParallelProcessor {
   /**
    * Execute Oracle BI query with connection pooling
    */
-  private async executeOracleQuery(payload: any): Promise<any> {
+  private async executeOracleQuery(payload: unknown): Promise<unknown> {
     // Simulate Oracle BI query execution
     await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
     
     // Mock Oracle BI response
+    const typedPayload = payload as { queryId?: string; mockData?: unknown[] };
     return {
-      queryId: payload.queryId,
-      data: payload.mockData || [],
+      queryId: typedPayload.queryId,
+      data: typedPayload.mockData || [],
       metadata: {
-        rowCount: payload.mockData?.length || 0,
+        rowCount: typedPayload.mockData?.length || 0,
         executionTime: Math.random() * 1000 + 100,
         cacheHit: Math.random() > 0.7,
       },
@@ -150,14 +151,15 @@ export class OracleParallelProcessor {
   /**
    * Update component with Oracle Redwood styling
    */
-  private async updateComponent(payload: any): Promise<any> {
+  private async updateComponent(payload: unknown): Promise<unknown> {
     // Simulate component update process
     await new Promise(resolve => setTimeout(resolve, Math.random() * 800 + 300));
     
+    const typedPayload = payload as { componentId?: string; changes?: unknown[] };
     return {
-      componentId: payload.componentId,
+      componentId: typedPayload.componentId,
       updated: true,
-      changes: payload.changes || [],
+      changes: typedPayload.changes || [],
       oracleCompliance: true,
     };
   }
@@ -165,29 +167,34 @@ export class OracleParallelProcessor {
   /**
    * Validate data against Oracle standards
    */
-  private async validateData(_payload: any): Promise<any> {
+  private async validateData(payload: unknown): Promise<unknown> {
     // Simulate validation process
     await new Promise(resolve => setTimeout(resolve, Math.random() * 400 + 200));
     
+    // Use payload for validation logic if needed
+    const isValid = Math.random() > 0.2; // 80% success rate
+    
     return {
-      valid: Math.random() > 0.2, // 80% success rate
+      valid: isValid,
       errors: Math.random() > 0.8 ? ['Sample validation error'] : [],
       warnings: Math.random() > 0.6 ? ['Sample warning'] : [],
+      payload: payload, // Include original payload for context
     };
   }
 
   /**
    * Process multiple items in batch
    */
-  private async batchProcess(payload: any): Promise<any> {
-    const { items, operation } = payload;
-    const results = [];
+  private async batchProcess(payload: unknown): Promise<unknown> {
+    const typedPayload = payload as { items?: unknown[]; operation?: string };
+    const { items = [], operation = 'default' } = typedPayload;
+    const results: unknown[] = [];
 
     // Process items in smaller chunks for better performance
     const chunkSize = 5;
     for (let i = 0; i < items.length; i += chunkSize) {
       const chunk = items.slice(i, i + chunkSize);
-      const chunkPromises = chunk.map(async (item: any) => {
+      const chunkPromises = chunk.map(async (item: unknown) => {
         // Simulate processing each item
         await new Promise(resolve => setTimeout(resolve, Math.random() * 300 + 100));
         return { item, processed: true, operation };
@@ -202,6 +209,7 @@ export class OracleParallelProcessor {
       results,
       operation,
     };
+  }
   }
 
   /**
@@ -274,7 +282,7 @@ export const OracleUtils = {
   /**
    * Execute multiple Oracle queries in parallel
    */
-  async executeParallelQueries(queries: any[]): Promise<TaskResult[]> {
+  async executeParallelQueries(queries: Array<{ queryId: string; table: string; mockData?: unknown[] }>): Promise<TaskResult[]> {
     const taskIds = queries.map(query => 
       oracleProcessor.addTask({
         type: 'query',
@@ -301,7 +309,7 @@ export const OracleUtils = {
   /**
    * Batch update components with Oracle styling
    */
-  async batchUpdateComponents(components: any[]): Promise<string> {
+  async batchUpdateComponents(components: Array<{ componentId: string; changes?: unknown[] }>): Promise<string> {
     return oracleProcessor.addTask({
       type: 'batch-process',
       payload: {
@@ -316,7 +324,7 @@ export const OracleUtils = {
   /**
    * Validate Oracle BI data format
    */
-  async validateOracleData(data: any): Promise<string> {
+  async validateOracleData(data: { type: string; connection?: unknown; [key: string]: unknown }): Promise<string> {
     return oracleProcessor.addTask({
       type: 'validation',
       payload: data,
