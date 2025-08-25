@@ -1,0 +1,589 @@
+# Performance Testing Automation
+name: Performance Test
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      test_type:
+        required: false
+        type: string
+        default: 'load'
+      target_url:
+        required: true
+        type: string
+      duration:
+        required: false
+        type: string
+        default: '10m'
+      users:
+        required: false
+        type: number
+        default: 100
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      test_type:
+        description: 'Type of performance test'
+        required: true
+        default: 'load'
+        type: choice
+        options:
+          - load
+          - stress
+          - spike
+          - endurance
+          - baseline
+      target_url:
+        description: 'Target URL for testing'
+        required: true
+        default: 'https://staging.oatie.company.com'
+        type: string
+      duration:
+        description: 'Test duration'
+        required: false
+        default: '10m'
+        type: string
+      users:
+        description: 'Number of concurrent users'
+        required: false
+        default: 100
+        type: number
+
+  schedule:
+    # Run performance tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+
+env:
+  PERFORMANCE_RESULTS_DIR: performance-results
+
+jobs:
+  # Performance test configuration
+  setup-performance-test:
+    name: Setup Performance Test
+    runs-on: ubuntu-latest
+    outputs:
+      test-config: ${{ steps.config.outputs.config }}
+      test-scenarios: ${{ steps.scenarios.outputs.scenarios }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure test parameters
+        id: config
+        run: |
+          case "${{ inputs.test_type }}" in
+            "load")
+              USERS=${{ inputs.users }}
+              DURATION="${{ inputs.duration }}"
+              RAMP_UP="2m"
+              ;;
+            "stress")
+              USERS=${{ inputs.users * 2 }}
+              DURATION="${{ inputs.duration }}"
+              RAMP_UP="5m"
+              ;;
+            "spike")
+              USERS=${{ inputs.users * 3 }}
+              DURATION="1m"
+              RAMP_UP="30s"
+              ;;
+            "endurance")
+              USERS=${{ inputs.users }}
+              DURATION="30m"
+              RAMP_UP="5m"
+              ;;
+            "baseline")
+              USERS="10"
+              DURATION="5m"
+              RAMP_UP="1m"
+              ;;
+          esac
+          
+          CONFIG=$(cat <<EOF
+          {
+            "users": $USERS,
+            "duration": "$DURATION",
+            "rampUp": "$RAMP_UP",
+            "targetUrl": "${{ inputs.target_url }}",
+            "environment": "${{ inputs.environment }}",
+            "testType": "${{ inputs.test_type }}"
+          }
+          EOF
+          )
+          
+          echo "config=$CONFIG" >> $GITHUB_OUTPUT
+
+      - name: Define test scenarios
+        id: scenarios
+        run: |
+          SCENARIOS=$(cat <<'EOF'
+          [
+            {
+              "name": "homepage",
+              "path": "/",
+              "method": "GET",
+              "weight": 30
+            },
+            {
+              "name": "dashboard",
+              "path": "/dashboard",
+              "method": "GET",
+              "weight": 25
+            },
+            {
+              "name": "reports",
+              "path": "/api/reports",
+              "method": "GET",
+              "weight": 20
+            },
+            {
+              "name": "health",
+              "path": "/health",
+              "method": "GET",
+              "weight": 10
+            },
+            {
+              "name": "login",
+              "path": "/api/auth/login",
+              "method": "POST",
+              "weight": 10
+            },
+            {
+              "name": "analytics",
+              "path": "/api/analytics",
+              "method": "GET",
+              "weight": 5
+            }
+          ]
+          EOF
+          )
+          
+          echo "scenarios=$SCENARIOS" >> $GITHUB_OUTPUT
+
+  # K6 Load Testing
+  k6-performance-test:
+    name: K6 Performance Test
+    runs-on: ubuntu-latest
+    needs: [setup-performance-test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install K6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Create K6 test script
+        run: |
+          mkdir -p ${{ env.PERFORMANCE_RESULTS_DIR }}
+          
+          cat > k6-test.js << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+          import { Rate, Trend } from 'k6/metrics';
+
+          // Custom metrics
+          export let errorRate = new Rate('errors');
+          export let responseTime = new Trend('response_time');
+
+          // Test configuration from environment
+          const config = JSON.parse(__ENV.TEST_CONFIG);
+          const scenarios = JSON.parse(__ENV.TEST_SCENARIOS);
+
+          export let options = {
+            stages: [
+              { duration: config.rampUp, target: config.users },
+              { duration: config.duration, target: config.users },
+              { duration: '2m', target: 0 },
+            ],
+            thresholds: {
+              http_req_duration: ['p(95)<5000'], // 95% of requests must complete below 5s
+              http_req_failed: ['rate<0.01'],   // Error rate must be below 1%
+              errors: ['rate<0.05'],            // Custom error rate
+            },
+          };
+
+          export default function () {
+            // Select a random scenario based on weight
+            let totalWeight = scenarios.reduce((sum, scenario) => sum + scenario.weight, 0);
+            let random = Math.random() * totalWeight;
+            let currentWeight = 0;
+            let selectedScenario;
+            
+            for (let scenario of scenarios) {
+              currentWeight += scenario.weight;
+              if (random <= currentWeight) {
+                selectedScenario = scenario;
+                break;
+              }
+            }
+
+            let url = config.targetUrl + selectedScenario.path;
+            let params = {
+              headers: {
+                'User-Agent': 'K6-Performance-Test',
+                'Accept': 'application/json',
+              },
+            };
+
+            let response;
+            if (selectedScenario.method === 'POST') {
+              let payload = JSON.stringify({
+                username: 'test@example.com',
+                password: 'testpassword'
+              });
+              params.headers['Content-Type'] = 'application/json';
+              response = http.post(url, payload, params);
+            } else {
+              response = http.get(url, params);
+            }
+
+            // Record metrics
+            responseTime.add(response.timings.duration);
+
+            // Validate response
+            let success = check(response, {
+              'status is 200 or 201': (r) => r.status === 200 || r.status === 201,
+              'response time < 5000ms': (r) => r.timings.duration < 5000,
+              'response has body': (r) => r.body.length > 0,
+            });
+
+            errorRate.add(!success);
+
+            sleep(1);
+          }
+
+          export function handleSummary(data) {
+            return {
+              'performance-summary.json': JSON.stringify(data),
+              'performance-summary.html': htmlReport(data),
+            };
+          }
+
+          function htmlReport(data) {
+            return `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>Performance Test Report</title>
+                <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; }
+                  .metric { margin: 10px 0; }
+                  .pass { color: green; }
+                  .fail { color: red; }
+                </style>
+              </head>
+              <body>
+                <h1>Performance Test Report</h1>
+                <h2>Test Configuration</h2>
+                <p>Environment: ${config.environment}</p>
+                <p>Test Type: ${config.testType}</p>
+                <p>Target URL: ${config.targetUrl}</p>
+                <p>Users: ${config.users}</p>
+                <p>Duration: ${config.duration}</p>
+                
+                <h2>Results</h2>
+                <div class="metric">Total Requests: ${data.metrics.http_reqs.count}</div>
+                <div class="metric">Failed Requests: ${data.metrics.http_req_failed.count}</div>
+                <div class="metric">Request Rate: ${data.metrics.http_reqs.rate.toFixed(2)}/s</div>
+                <div class="metric">Average Response Time: ${data.metrics.http_req_duration.avg.toFixed(2)}ms</div>
+                <div class="metric">95th Percentile: ${data.metrics['http_req_duration{expected_response:true}'].p95.toFixed(2)}ms</div>
+                <div class="metric">99th Percentile: ${data.metrics['http_req_duration{expected_response:true}'].p99.toFixed(2)}ms</div>
+              </body>
+              </html>
+            `;
+          }
+          EOF
+
+      - name: Run K6 performance test
+        env:
+          TEST_CONFIG: ${{ needs.setup-performance-test.outputs.test-config }}
+          TEST_SCENARIOS: ${{ needs.setup-performance-test.outputs.test-scenarios }}
+        run: |
+          k6 run \
+            --out json=${{ env.PERFORMANCE_RESULTS_DIR }}/k6-results.json \
+            --summary-export=${{ env.PERFORMANCE_RESULTS_DIR }}/k6-summary.json \
+            k6-test.js
+
+      - name: Upload K6 results
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results
+          path: |
+            ${{ env.PERFORMANCE_RESULTS_DIR }}/k6-results.json
+            ${{ env.PERFORMANCE_RESULTS_DIR }}/k6-summary.json
+            performance-summary.html
+
+  # Artillery.js Performance Testing
+  artillery-performance-test:
+    name: Artillery Performance Test
+    runs-on: ubuntu-latest
+    needs: [setup-performance-test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Artillery
+        run: npm install -g artillery@latest
+
+      - name: Create Artillery test configuration
+        run: |
+          mkdir -p ${{ env.PERFORMANCE_RESULTS_DIR }}
+          
+          cat > artillery-test.yml << EOF
+          config:
+            target: '${{ inputs.target_url }}'
+            phases:
+              - duration: 120
+                arrivalRate: ${{ fromJSON(needs.setup-performance-test.outputs.test-config).users }}
+                name: "Ramp up"
+              - duration: ${{ fromJSON(needs.setup-performance-test.outputs.test-config).duration }}
+                arrivalRate: ${{ fromJSON(needs.setup-performance-test.outputs.test-config).users }}
+                name: "Sustained load"
+            defaults:
+              headers:
+                User-Agent: "Artillery-Performance-Test"
+          scenarios:
+            - name: "Mixed workload"
+              weight: 100
+              flow:
+                - get:
+                    url: "/"
+                    capture:
+                      - json: "$.status"
+                        as: "status"
+                - think: 2
+                - get:
+                    url: "/dashboard"
+                - think: 3
+                - get:
+                    url: "/api/reports"
+                    expect:
+                      - statusCode: 200
+                - think: 1
+                - get:
+                    url: "/health"
+          EOF
+
+      - name: Run Artillery performance test
+        run: |
+          artillery run artillery-test.yml \
+            --output ${{ env.PERFORMANCE_RESULTS_DIR }}/artillery-results.json
+
+      - name: Generate Artillery report
+        run: |
+          artillery report ${{ env.PERFORMANCE_RESULTS_DIR }}/artillery-results.json \
+            --output ${{ env.PERFORMANCE_RESULTS_DIR }}/artillery-report.html
+
+      - name: Upload Artillery results
+        uses: actions/upload-artifact@v4
+        with:
+          name: artillery-results
+          path: |
+            ${{ env.PERFORMANCE_RESULTS_DIR }}/artillery-results.json
+            ${{ env.PERFORMANCE_RESULTS_DIR }}/artillery-report.html
+
+  # Custom Python Performance Test
+  python-performance-test:
+    name: Python Custom Performance Test
+    runs-on: ubuntu-latest
+    needs: [setup-performance-test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install aiohttp asyncio structlog locust
+
+      - name: Run custom performance test
+        env:
+          TEST_CONFIG: ${{ needs.setup-performance-test.outputs.test-config }}
+          TEST_SCENARIOS: ${{ needs.setup-performance-test.outputs.test-scenarios }}
+        run: |
+          mkdir -p ${{ env.PERFORMANCE_RESULTS_DIR }}
+          python scripts/performance_test.py \
+            --base-url ${{ inputs.target_url }} \
+            --users ${{ fromJSON(needs.setup-performance-test.outputs.test-config).users }} \
+            --duration ${{ fromJSON(needs.setup-performance-test.outputs.test-config).duration }} \
+            --output ${{ env.PERFORMANCE_RESULTS_DIR }}/python-results.json
+
+      - name: Upload Python test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-performance-results
+          path: ${{ env.PERFORMANCE_RESULTS_DIR }}/python-results.json
+
+  # Performance analysis and reporting
+  analyze-performance:
+    name: Analyze Performance Results
+    runs-on: ubuntu-latest
+    needs: [k6-performance-test, artillery-performance-test, python-performance-test]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all performance results
+        uses: actions/download-artifact@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install analysis dependencies
+        run: |
+          pip install pandas matplotlib seaborn jinja2
+
+      - name: Analyze performance results
+        run: |
+          cat > analyze_results.py << 'EOF'
+          import json
+          import pandas as pd
+          import matplotlib.pyplot as plt
+          import seaborn as sns
+          from datetime import datetime
+          import os
+
+          # Load K6 results
+          k6_summary = {}
+          if os.path.exists('k6-results/k6-summary.json'):
+              with open('k6-results/k6-summary.json', 'r') as f:
+                  k6_summary = json.load(f)
+
+          # Generate performance report
+          report = {
+              'timestamp': datetime.now().isoformat(),
+              'test_type': '${{ inputs.test_type }}',
+              'environment': '${{ inputs.environment }}',
+              'target_url': '${{ inputs.target_url }}',
+              'summary': {}
+          }
+
+          if k6_summary:
+              metrics = k6_summary.get('metrics', {})
+              report['summary'] = {
+                  'total_requests': metrics.get('http_reqs', {}).get('count', 0),
+                  'failed_requests': metrics.get('http_req_failed', {}).get('count', 0),
+                  'avg_response_time': metrics.get('http_req_duration', {}).get('avg', 0),
+                  'p95_response_time': metrics.get('http_req_duration', {}).get('p95', 0),
+                  'p99_response_time': metrics.get('http_req_duration', {}).get('p99', 0),
+                  'request_rate': metrics.get('http_reqs', {}).get('rate', 0)
+              }
+
+          # Performance thresholds
+          thresholds = {
+              'avg_response_time': 2000,  # 2s
+              'p95_response_time': 5000,  # 5s
+              'p99_response_time': 10000, # 10s
+              'error_rate': 0.01          # 1%
+          }
+
+          # Check performance against thresholds
+          report['status'] = 'PASS'
+          if report['summary']:
+              error_rate = report['summary']['failed_requests'] / max(report['summary']['total_requests'], 1)
+              
+              if (report['summary']['avg_response_time'] > thresholds['avg_response_time'] or
+                  report['summary']['p95_response_time'] > thresholds['p95_response_time'] or
+                  report['summary']['p99_response_time'] > thresholds['p99_response_time'] or
+                  error_rate > thresholds['error_rate']):
+                  report['status'] = 'FAIL'
+
+          # Save consolidated report
+          with open('performance-analysis.json', 'w') as f:
+              json.dump(report, f, indent=2)
+
+          print(f"Performance test {report['status']}")
+          print(f"Average response time: {report['summary'].get('avg_response_time', 0):.2f}ms")
+          print(f"95th percentile: {report['summary'].get('p95_response_time', 0):.2f}ms")
+          print(f"Request rate: {report['summary'].get('request_rate', 0):.2f}/s")
+          EOF
+
+          python analyze_results.py
+
+      - name: Generate performance charts
+        run: |
+          # Create simple performance visualization if K6 data exists
+          if [ -f "k6-results/k6-results.json" ]; then
+            echo "Generating performance charts..."
+            # Add chart generation logic here
+          fi
+
+      - name: Upload performance analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-analysis
+          path: |
+            performance-analysis.json
+            *.png
+
+      # Performance regression check
+      - name: Check for performance regression
+        run: |
+          echo "Checking for performance regression..."
+          if [ -f "performance-analysis.json" ]; then
+            STATUS=$(cat performance-analysis.json | jq -r '.status')
+            if [ "$STATUS" = "FAIL" ]; then
+              echo "Performance test failed - possible regression detected"
+              exit 1
+            fi
+          fi
+
+      # Notify performance results
+      - name: Notify performance results
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "Performance Test Completed",
+              attachments: [{
+                color: "${{ (needs.k6-performance-test.result == 'success' && needs.artillery-performance-test.result == 'success') && 'good' || 'warning' }}",
+                fields: [{
+                  title: "Environment",
+                  value: "${{ inputs.environment }}",
+                  short: true
+                }, {
+                  title: "Test Type",
+                  value: "${{ inputs.test_type }}",
+                  short: true
+                }, {
+                  title: "Target",
+                  value: "${{ inputs.target_url }}",
+                  short: true
+                }, {
+                  title: "Duration",
+                  value: "${{ inputs.duration }}",
+                  short: true
+                }]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
