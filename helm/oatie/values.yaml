@@ -1,0 +1,439 @@
+# Default values for oatie.
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  imageRegistry: "ghcr.io"
+  imagePullSecrets: []
+  storageClass: ""
+
+# Application metadata
+nameOverride: ""
+fullnameOverride: ""
+
+# Deployment strategy
+deploymentStrategy:
+  type: "blue-green"  # Options: blue-green, rolling, canary
+  blueGreen:
+    productionSlot: "blue"
+    previewSlot: "green"
+    autoPromotionEnabled: false
+    scaleDownDelaySeconds: 30
+  canary:
+    maxWeight: 100
+    maxSurge: "25%"
+    maxUnavailable: 1
+    analysis:
+      interval: "1m"
+      threshold: 5
+      successRate: 99
+
+# Image configuration
+image:
+  backend:
+    repository: walsh2232/oatie-ai-reporting/backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  frontend:
+    repository: walsh2232/oatie-ai-reporting/frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+# Environment configuration
+environment: production
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+    - ALL
+
+# Backend configuration
+backend:
+  enabled: true
+  replicaCount: 3
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - oatie-backend
+          topologyKey: kubernetes.io/hostname
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+    annotations: {}
+  
+  probes:
+    liveness:
+      httpGet:
+        path: /health
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      httpGet:
+        path: /health/ready
+        port: http
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+    startup:
+      httpGet:
+        path: /health/startup
+        port: http
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 30
+
+# Frontend configuration
+frontend:
+  enabled: true
+  replicaCount: 3
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - oatie-frontend
+          topologyKey: kubernetes.io/hostname
+  
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 80
+    annotations: {}
+  
+  probes:
+    liveness:
+      httpGet:
+        path: /health
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      httpGet:
+        path: /health
+        port: http
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: oatie.company.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: api.oatie.company.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend
+  tls:
+    - secretName: oatie-tls-cert
+      hosts:
+        - oatie.company.com
+        - api.oatie.company.com
+
+# Database configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "secure-postgres-password"
+    username: "oatie_user"
+    password: "secure-user-password"
+    database: "oatie_db"
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: "fast-ssd"
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# Redis configuration
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "secure-redis-password"
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: "fast-ssd"
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# Configuration management
+config:
+  # Application settings
+  app:
+    debug: false
+    logLevel: "INFO"
+    secretKey: ""  # Will be generated if empty
+    encryptionKey: ""  # Will be generated if empty
+    
+  # Security settings
+  security:
+    corsOrigins: ["https://oatie.company.com"]
+    allowedHosts: ["oatie.company.com", "api.oatie.company.com"]
+    rateLimitRequests: 1000
+    rateLimitWindow: 3600
+    
+  # Performance settings
+  performance:
+    asyncWorkers: 4
+    connectionPoolSize: 100
+    queryTimeout: 30
+    maxQueryComplexity: 1000
+    
+  # Monitoring settings
+  monitoring:
+    enabled: true
+    metricsEndpoint: "/metrics"
+    
+  # External services
+  external:
+    oracleBiUrl: ""
+    oracleBiUsername: ""
+    oracleBiPassword: ""
+    
+# Secrets management
+secrets:
+  # External secret management
+  external:
+    enabled: false
+    backend: "vault"  # Options: vault, aws-secrets-manager, azure-keyvault
+    path: ""
+  
+  # Direct secret values (not recommended for production)
+  values:
+    databaseUrl: ""
+    redisUrl: ""
+    secretKey: ""
+    encryptionKey: ""
+
+# Monitoring configuration
+monitoring:
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+  
+  grafana:
+    enabled: true
+    dashboards:
+      enabled: true
+    datasources:
+      enabled: true
+  
+  alerts:
+    enabled: true
+    rules:
+      - name: "High CPU Usage"
+        expr: 'rate(container_cpu_usage_seconds_total[5m]) > 0.8'
+        for: "5m"
+        severity: "warning"
+      - name: "High Memory Usage"
+        expr: 'container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9'
+        for: "5m"
+        severity: "critical"
+
+# Backup configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention: "30d"
+  storage:
+    type: "s3"  # Options: s3, gcs, azure-blob
+    bucket: "oatie-backups"
+    region: "us-east-1"
+
+# Network policies
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: "ingress-nginx"
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: "monitoring"
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Resource quotas
+resourceQuota:
+  enabled: false
+  hard:
+    requests.cpu: "8"
+    requests.memory: "16Gi"
+    limits.cpu: "16"
+    limits.memory: "32Gi"
+
+# Environment-specific overrides
+environments:
+  development:
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+    postgresql:
+      primary:
+        persistence:
+          size: 10Gi
+    redis:
+      master:
+        persistence:
+          size: 1Gi
+  
+  staging:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+    postgresql:
+      primary:
+        persistence:
+          size: 15Gi
+    redis:
+      master:
+        persistence:
+          size: 4Gi
+  
+  production:
+    replicaCount: 3
+    autoscaling:
+      enabled: true
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
