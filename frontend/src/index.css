@@ -1,0 +1,206 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Oracle Redwood Design System Variables */
+:root {
+  /* Primary Colors */
+  --redwood-brand-color-1: #312D2A;
+  --redwood-brand-color-2: #522916;
+  --redwood-brand-color-3: #A76914;
+  --redwood-brand-color-4: #ED6C02;
+  --redwood-brand-color-5: #FFB000;
+  
+  /* Neutral Colors */
+  --redwood-neutral-0: #FFFFFF;
+  --redwood-neutral-10: #FAFAFA;
+  --redwood-neutral-20: #F5F5F5;
+  --redwood-neutral-30: #EBEBEB;
+  --redwood-neutral-40: #D6D6D6;
+  --redwood-neutral-50: #CCCCCC;
+  --redwood-neutral-60: #999999;
+  --redwood-neutral-70: #666666;
+  --redwood-neutral-80: #333333;
+  --redwood-neutral-90: #1A1A1A;
+  
+  /* Semantic Colors */
+  --redwood-success: #0F7B0F;
+  --redwood-warning: #FF8800;
+  --redwood-danger: #C74634;
+  --redwood-info: #0572CE;
+  
+  /* Typography */
+  --redwood-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--redwood-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--redwood-neutral-10);
+  color: var(--redwood-neutral-80);
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Oracle Redwood Component Styles */
+.redwood-button {
+  @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200;
+}
+
+.redwood-button--primary {
+  background-color: var(--redwood-brand-color-4);
+  color: var(--redwood-neutral-0);
+  border: 1px solid var(--redwood-brand-color-4);
+}
+
+.redwood-button--primary:hover {
+  background-color: var(--redwood-brand-color-3);
+  border-color: var(--redwood-brand-color-3);
+}
+
+.redwood-button--secondary {
+  background-color: var(--redwood-neutral-0);
+  color: var(--redwood-brand-color-4);
+  border: 1px solid var(--redwood-brand-color-4);
+}
+
+.redwood-button--secondary:hover {
+  background-color: var(--redwood-neutral-10);
+}
+
+.redwood-card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+}
+
+.redwood-input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500;
+}
+
+.redwood-textarea {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-vertical;
+}
+
+.redwood-sidebar {
+  background-color: var(--redwood-brand-color-1);
+  color: var(--redwood-neutral-0);
+}
+
+.redwood-header {
+  background-color: var(--redwood-neutral-0);
+  border-bottom: 1px solid var(--redwood-neutral-30);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.redwood-nav-item {
+  @apply flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200;
+}
+
+.redwood-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.redwood-nav-item--active {
+  background-color: var(--redwood-brand-color-4);
+}
+
+/* Chart Styles */
+.recharts-cartesian-axis-tick-value {
+  font-family: var(--redwood-font-family);
+  font-size: 12px;
+  fill: var(--redwood-neutral-70);
+}
+
+.recharts-legend-item-text {
+  font-family: var(--redwood-font-family);
+  font-size: 14px;
+  color: var(--redwood-neutral-70) !important;
+}
+
+/* Loading Spinner */
+.redwood-spinner {
+  @apply inline-block w-4 h-4 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin;
+}
+
+/* SQL Editor Styles */
+.sql-editor {
+  border: 1px solid var(--redwood-neutral-40);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sql-editor .monaco-editor {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+}
+
+/* Toast Notifications */
+.react-hot-toast div[role="status"] {
+  font-family: var(--redwood-font-family);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .redwood-card {
+    @apply p-4;
+  }
+  
+  .redwood-button {
+    @apply text-xs px-3 py-1.5;
+  }
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Accessibility */
+.redwood-button:focus,
+.redwood-input:focus,
+.redwood-textarea:focus {
+  outline: 2px solid var(--redwood-brand-color-4);
+  outline-offset: 2px;
+}
+
+/* Animation Classes */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-in-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
