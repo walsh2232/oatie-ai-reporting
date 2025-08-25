@@ -3,8 +3,9 @@ Enterprise configuration management with environment-based settings
 Supports multi-environment deployments and security best practices
 """
 
+import os
 from functools import lru_cache
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings
 
@@ -12,10 +13,11 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings with enterprise security and performance configuration"""
     
-    # Application
+    # Environment Configuration
+    environment: str = Field(default="development", description="Application environment")
     app_name: str = "Oatie AI Reporting Platform"
     version: str = "3.0.0"
-    debug: bool = False
+    debug: bool = Field(default=False, description="Debug mode")
     port: int = 8000
     workers: int = 4
     
@@ -151,12 +153,38 @@ class Settings(BaseSettings):
         return v
     
     class Config:
-        env_file = ".env"
         env_file_encoding = 'utf-8'
         case_sensitive = False
+        
+        @property
+        def env_file(self):
+            """Dynamically select environment file based on ENVIRONMENT variable"""
+            env = os.getenv("ENVIRONMENT", "development")
+            env_files = {
+                "development": ".env.development",
+                "production": ".env.production",
+                "staging": ".env.staging",
+                "testing": ".env.testing"
+            }
+            return env_files.get(env, ".env.development")
 
 
 @lru_cache()
 def get_settings() -> Settings:
     """Get cached application settings"""
     return Settings()
+
+
+def get_environment() -> str:
+    """Get current environment"""
+    return os.getenv("ENVIRONMENT", "development")
+
+
+def is_production() -> bool:
+    """Check if running in production environment"""
+    return get_environment() == "production"
+
+
+def is_development() -> bool:
+    """Check if running in development environment"""
+    return get_environment() == "development"

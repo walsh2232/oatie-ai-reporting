@@ -9,7 +9,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.8.0",
-    "@redwoodjs/forms": "^6.0.0",
     "@apollo/client": "^3.8.0",
     "graphql": "^16.8.0",
     "axios": "^1.6.0",
@@ -24,10 +23,8 @@
     "framer-motion": "^10.16.0",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
-    "react-virtual": "^2.10.4",
     "react-window": "^1.8.8",
-    "react-window-infinite-loader": "^1.0.9",
-    "react-accessibility": "^1.0.0"
+    "react-window-infinite-loader": "^1.0.9"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
