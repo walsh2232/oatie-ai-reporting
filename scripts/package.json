@@ -1,0 +1,32 @@
+{
+  "name": "github-api-optimizer",
+  "version": "1.0.0",
+  "description": "Optimized GitHub API client with caching and GraphQL for Oatie AI",
+  "main": "optimized-github-client.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node optimized-github-client.ts",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.2",
+    "@octokit/graphql": "^8.1.1",
+    "@octokit/app": "^15.1.0",
+    "@octokit/auth-app": "^7.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.8.6",
+    "typescript": "^5.8.3",
+    "ts-node": "^10.9.2"
+  },
+  "keywords": [
+    "github",
+    "api",
+    "optimization",
+    "caching",
+    "graphql",
+    "rate-limiting"
+  ],
+  "author": "Oatie AI Team",
+  "license": "MIT"
+}
