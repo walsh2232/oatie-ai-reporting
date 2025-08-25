@@ -1,0 +1,301 @@
+/**
+ * Oracle Redwood Design System Global Styles
+ * Implements design tokens and accessibility standards
+ */
+
+/* Import Oracle JET CSS framework */
+@import url('@oracle/oraclejet/dist/css/alta/oj-alta.css');
+
+/* CSS Custom Properties for Oracle Redwood Design System */
+:root {
+  /* Color Palette - Redwood Primary */
+  --oj-palette-brand-primary: #312e81;
+  --oj-palette-brand-secondary: #4f46e5;
+  --oj-palette-brand-tertiary: #6366f1;
+  
+  /* Neutral Colors */
+  --oj-palette-neutral-0: #ffffff;
+  --oj-palette-neutral-10: #fafafa;
+  --oj-palette-neutral-20: #f4f4f5;
+  --oj-palette-neutral-30: #e4e4e7;
+  --oj-palette-neutral-40: #d4d4d8;
+  --oj-palette-neutral-50: #a1a1aa;
+  --oj-palette-neutral-60: #71717a;
+  --oj-palette-neutral-70: #52525b;
+  --oj-palette-neutral-80: #3f3f46;
+  --oj-palette-neutral-90: #27272a;
+  --oj-palette-neutral-100: #18181b;
+  --oj-palette-neutral-190: #09090b;
+  
+  /* Semantic Colors */
+  --oj-palette-green-70: #16a34a;
+  --oj-palette-red-70: #dc2626;
+  --oj-palette-yellow-70: #ca8a04;
+  --oj-palette-blue-70: #2563eb;
+  
+  /* Typography */
+  --oj-typography-heading-xl-font-size: 2.25rem;
+  --oj-typography-heading-lg-font-size: 1.875rem;
+  --oj-typography-heading-md-font-size: 1.5rem;
+  --oj-typography-heading-sm-font-size: 1.25rem;
+  --oj-typography-body-lg-font-size: 1.125rem;
+  --oj-typography-body-md-font-size: 1rem;
+  --oj-typography-body-sm-font-size: 0.875rem;
+  --oj-typography-body-xs-font-size: 0.75rem;
+  
+  /* Spacing */
+  --oj-spacing-xs: 0.25rem;
+  --oj-spacing-sm: 0.5rem;
+  --oj-spacing-md: 1rem;
+  --oj-spacing-lg: 1.5rem;
+  --oj-spacing-xl: 2rem;
+  --oj-spacing-2xl: 3rem;
+  
+  /* Border Radius */
+  --oj-border-radius-sm: 0.25rem;
+  --oj-border-radius-md: 0.375rem;
+  --oj-border-radius-lg: 0.5rem;
+  --oj-border-radius-xl: 0.75rem;
+  
+  /* Shadows */
+  --oj-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --oj-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --oj-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  
+  /* Z-Index Scale */
+  --oj-z-dropdown: 1000;
+  --oj-z-sticky: 1020;
+  --oj-z-fixed: 1030;
+  --oj-z-modal-backdrop: 1040;
+  --oj-z-modal: 1050;
+  --oj-z-popover: 1060;
+  --oj-z-tooltip: 1070;
+}
+
+/* Global Reset and Base Styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: var(--oj-palette-neutral-10);
+  color: var(--oj-palette-neutral-190);
+  font-size: var(--oj-typography-body-md-font-size);
+}
+
+/* Accessibility Improvements */
+*:focus {
+  outline: 2px solid var(--oj-palette-brand-primary);
+  outline-offset: 2px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip to main content link for screen readers */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--oj-palette-brand-primary);
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: var(--oj-border-radius-md);
+  z-index: var(--oj-z-tooltip);
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --oj-palette-neutral-0: #ffffff;
+    --oj-palette-neutral-190: #000000;
+    --oj-palette-brand-primary: #0000ff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --oj-palette-neutral-0: #18181b;
+    --oj-palette-neutral-10: #27272a;
+    --oj-palette-neutral-20: #3f3f46;
+    --oj-palette-neutral-190: #fafafa;
+  }
+}
+
+/* Application-specific styles */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography Utilities */
+.text-heading-xl { font-size: var(--oj-typography-heading-xl-font-size); font-weight: 600; }
+.text-heading-lg { font-size: var(--oj-typography-heading-lg-font-size); font-weight: 600; }
+.text-heading-md { font-size: var(--oj-typography-heading-md-font-size); font-weight: 600; }
+.text-heading-sm { font-size: var(--oj-typography-heading-sm-font-size); font-weight: 600; }
+.text-body-lg { font-size: var(--oj-typography-body-lg-font-size); }
+.text-body-md { font-size: var(--oj-typography-body-md-font-size); }
+.text-body-sm { font-size: var(--oj-typography-body-sm-font-size); }
+.text-body-xs { font-size: var(--oj-typography-body-xs-font-size); }
+
+/* Spacing Utilities */
+.space-xs { margin: var(--oj-spacing-xs); }
+.space-sm { margin: var(--oj-spacing-sm); }
+.space-md { margin: var(--oj-spacing-md); }
+.space-lg { margin: var(--oj-spacing-lg); }
+.space-xl { margin: var(--oj-spacing-xl); }
+
+/* Layout Utilities */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+/* Card Component */
+.card {
+  background: var(--oj-palette-neutral-0);
+  border: 1px solid var(--oj-palette-neutral-30);
+  border-radius: var(--oj-border-radius-lg);
+  box-shadow: var(--oj-shadow-sm);
+  padding: var(--oj-spacing-lg);
+}
+
+/* Button Variants */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--oj-spacing-sm) var(--oj-spacing-lg);
+  font-size: var(--oj-typography-body-md-font-size);
+  font-weight: 500;
+  border-radius: var(--oj-border-radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--oj-palette-brand-primary);
+  color: var(--oj-palette-neutral-0);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--oj-palette-brand-secondary);
+}
+
+.btn-secondary {
+  background-color: var(--oj-palette-neutral-0);
+  color: var(--oj-palette-neutral-190);
+  border-color: var(--oj-palette-neutral-40);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--oj-palette-neutral-10);
+}
+
+/* Form Elements */
+.form-input {
+  width: 100%;
+  padding: var(--oj-spacing-sm) var(--oj-spacing-md);
+  border: 1px solid var(--oj-palette-neutral-40);
+  border-radius: var(--oj-border-radius-md);
+  font-size: var(--oj-typography-body-md-font-size);
+  background-color: var(--oj-palette-neutral-0);
+  color: var(--oj-palette-neutral-190);
+}
+
+.form-input:focus {
+  border-color: var(--oj-palette-brand-primary);
+  box-shadow: 0 0 0 3px rgba(49, 46, 129, 0.1);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--oj-typography-body-sm-font-size);
+  font-weight: 500;
+  color: var(--oj-palette-neutral-70);
+  margin-bottom: var(--oj-spacing-xs);
+}
+
+/* Loading States */
+.loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--oj-palette-neutral-40);
+  border-radius: 50%;
+  border-top-color: var(--oj-palette-brand-primary);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .card {
+    padding: var(--oj-spacing-md);
+  }
+  
+  .btn {
+    padding: var(--oj-spacing-sm) var(--oj-spacing-md);
+    font-size: var(--oj-typography-body-sm-font-size);
+  }
+}
