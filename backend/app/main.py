@@ -57,7 +57,7 @@ app = FastAPI(
 # Security middleware
 app.add_middleware(
     TrustedHostMiddleware, 
-    allowed_hosts=settings.ALLOWED_HOSTS + ["*"] if settings.DEBUG else settings.ALLOWED_HOSTS
+    allowed_hosts=settings.ALLOWED_HOSTS + ["*"] if settings.DEBUG else settings.ALLOWED_HOSTS + ["testserver"]
 )
 
 # CORS middleware
