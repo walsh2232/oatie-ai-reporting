@@ -21,7 +21,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 authlib==1.2.1
-cryptography==41.0.8
+cryptography>=41.0.0,<46.0.0
 
 # Multi-Factor Authentication
 pyotp==2.9.0
