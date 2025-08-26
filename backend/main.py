@@ -4,12 +4,11 @@ Optimized for 1000+ concurrent users with <2s response times
 """
 
 import asyncio
-import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import structlog
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from prometheus_client import Counter, Histogram, generate_latest
@@ -51,59 +50,59 @@ REQUEST_DURATION = Histogram("http_request_duration_seconds", "HTTP request dura
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(fastapi_app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifecycle - startup and shutdown events"""
-    settings = get_settings()
+    app_settings = get_settings()
 
     # Initialize core services
     logger.info("Initializing Oatie AI Reporting Platform...")
 
     # Initialize database connections
-    db_manager = DatabaseManager(settings.database_url)
+    db_manager = DatabaseManager(app_settings.database_url)
     await db_manager.initialize()
-    app.state.db_manager = db_manager
+    fastapi_app.state.db_manager = db_manager
 
     # Initialize cache manager
-    cache_manager = CacheManager(settings.redis_url)
+    cache_manager = CacheManager(app_settings.redis_url)
     await cache_manager.initialize()
-    app.state.cache_manager = cache_manager
+    fastapi_app.state.cache_manager = cache_manager
 
     # Initialize security manager
-    security_manager = SecurityManager(settings)
-    app.state.security_manager = security_manager
+    security_manager = SecurityManager(app_settings)
+    fastapi_app.state.security_manager = security_manager
 
     # Initialize Oracle BI Publisher SDK if enabled
     oracle_sdk = None
-    if settings.oracle_bi_enabled and settings.oracle_bi_urls:
+    if app_settings.oracle_bi_enabled and app_settings.oracle_bi_urls:
         try:
             from backend.integrations.oracle import OracleBIPublisherSDK
 
             oracle_sdk = OracleBIPublisherSDK(
-                server_urls=settings.oracle_bi_urls,
-                username=settings.oracle_bi_username or "",
-                password=settings.oracle_bi_password or "",
-                encryption_key=settings.encryption_key,
-                pool_size=settings.oracle_bi_pool_size,
-                timeout=settings.oracle_bi_timeout,
+                server_urls=app_settings.oracle_bi_urls,
+                username=app_settings.oracle_bi_username or "",
+                password=app_settings.oracle_bi_password or "",
+                encryption_key=app_settings.encryption_key,
+                pool_size=app_settings.oracle_bi_pool_size,
+                timeout=app_settings.oracle_bi_timeout,
                 enable_caching=True,
-                cache_ttl=settings.oracle_bi_cache_ttl,
-                enable_audit=settings.oracle_bi_enable_audit,
+                cache_ttl=app_settings.oracle_bi_cache_ttl,
+                enable_audit=app_settings.oracle_bi_enable_audit,
             )
 
             await oracle_sdk.initialize()
-            app.state.oracle_sdk = oracle_sdk
+            fastapi_app.state.oracle_sdk = oracle_sdk
 
             logger.info(
                 "Oracle BI Publisher SDK initialized",
-                servers=len(settings.oracle_bi_urls),
-                pool_size=settings.oracle_bi_pool_size,
+                servers=len(app_settings.oracle_bi_urls),
+                pool_size=app_settings.oracle_bi_pool_size,
             )
 
-        except Exception as e:
+        except (ImportError, ConnectionError, ValueError, RuntimeError) as e:
             logger.error("Failed to initialize Oracle BI Publisher SDK", error=str(e))
-            app.state.oracle_sdk = None
+            fastapi_app.state.oracle_sdk = None
     else:
-        app.state.oracle_sdk = None
+        fastapi_app.state.oracle_sdk = None
         logger.info("Oracle BI Publisher integration disabled")
 
     # Setup monitoring
@@ -127,31 +126,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_application() -> FastAPI:
     """Create and configure the FastAPI application"""
-    settings = get_settings()
+    app_settings = get_settings()
 
-    app = FastAPI(
+    fastapi_app = FastAPI(
         title="Oatie AI Reporting Platform",
         description="Enterprise-grade Oracle BI Publisher AI Assistant",
         version="3.0.0",
-        docs_url="/api/docs" if settings.debug else None,
-        redoc_url="/api/redoc" if settings.debug else None,
+        docs_url="/api/docs" if app_settings.debug else None,
+        redoc_url="/api/redoc" if app_settings.debug else None,
         lifespan=lifespan,
     )
 
     # Security middleware
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
+    fastapi_app.add_middleware(
+        TrustedHostMiddleware, allowed_hosts=app_settings.allowed_hosts
+    )
 
     # CORS middleware for frontend integration
-    app.add_middleware(
+    fastapi_app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=app_settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
     # Request middleware for monitoring and caching
-    @app.middleware("http")
+    @fastapi_app.middleware("http")
     async def monitoring_middleware(request: Request, call_next):
         start_time = asyncio.get_event_loop().time()
 
@@ -174,23 +175,23 @@ def create_application() -> FastAPI:
         return response
 
     # Include API routes
-    app.include_router(api_router, prefix="/api/v1")
+    fastapi_app.include_router(api_router, prefix="/api/v1")
 
     # Mount GraphQL endpoint
-    app.mount("/graphql", graphql_app)
+    fastapi_app.mount("/graphql", graphql_app)
 
     # Health check endpoints
-    @app.get("/health")
+    @fastapi_app.get("/health")
     async def health_check():
         """Health check endpoint for load balancers"""
         return {"status": "healthy", "version": "3.0.0"}
 
-    @app.get("/metrics")
+    @fastapi_app.get("/metrics")
     async def metrics():
         """Prometheus metrics endpoint"""
         return PlainTextResponse(generate_latest())
 
-    return app
+    return fastapi_app
 
 
 # Create application instance
@@ -199,13 +200,13 @@ app = create_application()
 if __name__ == "__main__":
     import uvicorn
 
-    settings = get_settings()
+    runtime_settings = get_settings()
 
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=settings.port,
-        workers=settings.workers,
-        reload=settings.debug,
-        access_log=settings.debug,
+        port=runtime_settings.port,
+        workers=runtime_settings.workers,
+        reload=runtime_settings.debug,
+        access_log=runtime_settings.debug,
     )
