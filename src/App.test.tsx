@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material';
-import oracleRedwoodTheme from './theme/oracleRedwoodTheme';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import App from './App';
+import oracleRedwoodTheme from './theme/oracleRedwoodTheme';
 
 describe('App', () => {
   it('renders login form initially', () => {
@@ -11,8 +11,9 @@ describe('App', () => {
         <App />
       </ThemeProvider>
     );
-    
+
     // Check if login form is rendered
-    expect(screen.getByText(/Oracle BI Reporting/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Oracle/i })).toBeTruthy();
+    expect(screen.getByText(/Oatie AI Reporting/i)).toBeTruthy();
   });
 });
