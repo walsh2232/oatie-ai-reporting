@@ -19,8 +19,8 @@ celery==5.3.4
 # Security & Authentication
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
-authlib==1.2.1
+python-multipart==0.0.18
+authlib==1.3.1
 cryptography==41.0.8
 
 # Multi-Factor Authentication
@@ -29,7 +29,7 @@ qrcode[pil]==7.4.2
 
 # API & GraphQL
 graphene==3.3.0
-strawberry-graphql==0.216.1
+strawberry-graphql==0.257.0
 webhooks==0.4.2
 
 # HTTP Clients
@@ -39,7 +39,7 @@ httpx==0.25.2
 # Analytics & ML
 numpy==1.24.3
 pandas==2.0.3
-scikit-learn==1.3.0
+scikit-learn==1.5.0
 statsmodels==0.14.0
 
 # Monitoring & Observability
@@ -56,5 +56,5 @@ factory-boy==3.3.0
 # Utilities
 python-dotenv==1.0.0
 click==8.1.7
-jinja2==3.1.2
+jinja2==3.1.6
 aiofiles==23.2.1
