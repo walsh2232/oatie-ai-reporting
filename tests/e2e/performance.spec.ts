@@ -1,10 +1,8 @@
 import { test, expect, Page } from '@playwright/test';
 import { performance } from 'perf_hooks';
 
-// Configure test timeout and retries for performance testing
-test.setTimeout(60000); // 60 seconds timeout
-
 // Performance thresholds
+
 const PERFORMANCE_THRESHOLDS = {
   pageLoadTime: 3000, // 3 seconds
   navigationTime: 2000, // 2 seconds

@@ -1,0 +1,5 @@
+# Minimal requirements for testing
+fastapi
+uvicorn
+pydantic
+python-dotenv

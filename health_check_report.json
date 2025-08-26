@@ -1,0 +1,247 @@
+{
+  "timestamp": "Tue Aug 26 00:14:00 UTC 2025",
+  "checks": {
+    "directory_structure": {
+      "backend": {
+        "exists": true,
+        "is_directory": true
+      },
+      "backend/api": {
+        "exists": true,
+        "is_directory": true
+      },
+      "backend/api/v1": {
+        "exists": true,
+        "is_directory": true
+      },
+      "backend/core": {
+        "exists": true,
+        "is_directory": true
+      },
+      "backend/integrations": {
+        "exists": true,
+        "is_directory": true
+      },
+      "frontend": {
+        "exists": true,
+        "is_directory": true
+      },
+      "frontend/src": {
+        "exists": true,
+        "is_directory": true
+      },
+      "tests": {
+        "exists": true,
+        "is_directory": true
+      },
+      "docs": {
+        "exists": true,
+        "is_directory": true
+      }
+    },
+    "required_files": {
+      "requirements.txt": {
+        "exists": true,
+        "size": 988
+      },
+      "package.json": {
+        "exists": true,
+        "size": 2371
+      },
+      ".env": {
+        "exists": true,
+        "size": 1449
+      },
+      "backend/main.py": {
+        "exists": true,
+        "size": 6607
+      },
+      "backend/core/config.py": {
+        "exists": true,
+        "size": 5625
+      },
+      "verify_oracle_integration.py": {
+        "exists": true,
+        "size": 7246
+      }
+    },
+    "python_syntax": {
+      "backend/main.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/graphql.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/__init__.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/mfa.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/users.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/sql.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/queries.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/admin.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/oracle.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/reports.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/auth.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/roles.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/analytics.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/api/v1/endpoints/security.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/cache_simple.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/mfa.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/template_intelligence.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/database.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/oracle_bi_publisher.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/abac.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/webhooks.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/cache.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/rbac.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/config.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/monitoring.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/core/security.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/tests/test_security.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/integrations/__init__.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/integrations/oracle/connection_pool.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/integrations/oracle/models.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/integrations/oracle/auth.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/integrations/oracle/sdk.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/integrations/oracle/__init__.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/services/nlp_sql_service.py": {
+        "valid_syntax": true,
+        "error": null
+      },
+      "backend/services/__init__.py": {
+        "valid_syntax": true,
+        "error": null
+      }
+    },
+    "environment_config": {
+      "env_file_exists": true,
+      "env_file_size": 1449,
+      "required_variables": {
+        "DEBUG": true,
+        "PORT": true,
+        "DATABASE_URL": true,
+        "REDIS_URL": true,
+        "SECRET_KEY": true,
+        "ORACLE_BI_ENABLED": true
+      }
+    },
+    "frontend_dependencies": {
+      "node_modules_exists": true,
+      "npm_list_success": true,
+      "npm_list_output": "oatie-ai-reporting@0.0.0 /home/runner/work/oatie-ai-reporting/oatie-ai-reporting\n\u251c\u2500\u2500 @emotion/react@11.14.0\n\u251c\u2500\u2500 @emotion/styled@11.14.1\n\u251c\u2500\u2500 @eslint/js@9.34.0\n\u251c\u2500\u2500 @hookform/resolvers@5.2.1\n\u251c\u2500\u2500 @mui/icons-material@7.3.1\n\u251c\u2500\u2500 @mui/lab@7.0.0-beta.16\n\u251c\u2500\u2500 @mui/material@7.3.1\n\u251c\u2500\u2500 @mui/x-charts@8.10.2\n\u251c\u2500\u2500 @mui/x-data-grid@8.10.2\n\u251c\u2500\u2500 @playwright/test@1.55.0\n\u251c\u2500\u2500 @tanstack/react-query@5.85.5\n\u251c\u2500\u2500 @testing-library/jest-dom@6.8.0\n\u251c\u2500\u2500 @testing-library/react@16.3.0\n\u251c\u2500\u2500 @testing-library/user-event@14.6.1\n\u251c\u2500\u2500 @typ",
+      "npm_audit_success": false,
+      "npm_audit_output": "{\n  \"auditReportVersion\": 2,\n  \"vulnerabilities\": {\n    \"@sentry/node\": {\n      \"name\": \"@sentry/node\",\n      \"severity\": \"low\",\n      \"isDirect\": false,\n      \"via\": [\n        \"cookie\"\n      ],\n      \"effects\": [\n        \"lighthouse\"\n      ],\n      \"range\": \"4.0.0-beta.0 - 7.74.2-alpha.1\",\n      \"nodes\": [\n        \"node_modules/@sentry/node\"\n      ],\n      \"fixAvailable\": {\n        \"name\": \"lighthouse\",\n        \"version\": \"12.8.1\",\n        \"isSemVerMajor\": true\n      }\n    },\n    \"cookie\": {\n  "
+    },
+    "basic_imports": {
+      "json": {
+        "importable": true
+      },
+      "os": {
+        "importable": true
+      },
+      "sys": {
+        "importable": true
+      },
+      "pathlib": {
+        "importable": true
+      },
+      "subprocess": {
+        "importable": true
+      }
+    }
+  }
+}
